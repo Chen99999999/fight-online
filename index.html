@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>双人联机PK</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="title">双人联机 PK</div>
+      <div id="status">未连接</div>
+    </header>
+
+    <main class="main">
+      <section class="panel" id="lobbyPanel">
+        <h1>房间联机版</h1>
+        <p>先创建房间，再让朋友输入房间号加入。手机也能整。</p>
+        <input id="nameInput" placeholder="你的名字" value="玩家" />
+        <div class="row">
+          <button id="createBtn">创建房间</button>
+          <input id="roomInput" placeholder="房间号" maxlength="4" />
+          <button id="joinBtn">加入房间</button>
+        </div>
+        <div class="room-box" id="roomBox">房间号：未进入</div>
+        <div class="tips">
+          玩法：左边摇杆/按钮控制你自己。<br>
+          先做最小可玩版：移动、轻击、重击、技能、掉血、胜负。
+        </div>
+      </section>
+
+      <section class="arena-wrap">
+        <canvas id="game" width="800" height="420"></canvas>
+        <div id="overlayMsg" class="overlay-msg hidden"></div>
+      </section>
+    </main>
+
+    <footer class="mobile-controls">
+      <div class="side">
+        <div class="pad-row">
+          <button data-k="left">左</button>
+          <button data-k="right">右</button>
+        </div>
+        <div class="pad-row">
+          <button data-k="up">跳</button>
+          <button data-k="down">下</button>
+        </div>
+      </div>
+      <div class="side">
+        <div class="pad-row">
+          <button data-k="light">轻</button>
+          <button data-k="heavy">重</button>
+        </div>
+        <div class="pad-row">
+          <button data-k="skill">技</button>
+          <button id="resetBtn">重开</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <script src="/client.js"></script>
+</body>
+</html>
