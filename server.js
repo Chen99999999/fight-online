@@ -18,40 +18,20 @@ function code() {
   for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
 }
-function safeSend(ws, payload) {
-  if (ws.readyState === 1) ws.send(JSON.stringify(payload));
-}
-function broadcast(room, payload) {
-  for (const p of room.players.values()) safeSend(p.ws, payload);
-}
-function snapshot(room) {
-  return {
-    roomId: room.roomId,
-    hostId: room.hostId,
-    players: [...room.players.values()].map(p => ({
-      id: p.id,
-      name: p.name,
-      role: p.role,
-      x: p.state.x,
-      y: p.state.y,
-      hp: p.state.hp,
-      facing: p.state.facing,
-      action: p.state.action,
-      color: p.state.color,
-      character: p.state.character || 'fighter'
-    }))
-  };
+function safeSend(ws, payload) { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); }
+function broadcast(room, payload) { for (const p of room.players.values()) safeSend(p.ws, payload); }
+function findRoomByPlayer(playerId) {
+  for (const r of rooms.values()) if (r.players.has(playerId)) return r;
+  return null;
 }
 function createPlayer(id, name, ws, role) {
   return {
-    id,
-    name,
-    ws,
-    role,
+    id, name, ws, role,
     state: {
       x: role === 'p1' ? 180 : 620,
       y: 308,
       hp: 100,
+      energy: 100,
       facing: role === 'p1' ? 1 : -1,
       action: 'idle',
       color: role === 'p1' ? '#f97316' : '#60a5fa',
@@ -59,17 +39,28 @@ function createPlayer(id, name, ws, role) {
     }
   };
 }
+function snapshot(room) {
+  return {
+    roomId: room.roomId,
+    hostId: room.hostId,
+    players: [...room.players.values()].map(p => ({
+      id: p.id, name: p.name, role: p.role,
+      x: p.state.x, y: p.state.y, hp: p.state.hp, energy: p.state.energy,
+      facing: p.state.facing, action: p.state.action, color: p.state.color,
+      character: p.state.character || 'blaze'
+    }))
+  };
+}
 function cleanupPlayer(ws) {
   for (const [roomId, room] of rooms) {
     let found = null;
-    for (const [id, player] of room.players) {
-      if (player.ws === ws) { found = id; break; }
-    }
+    for (const [id, p] of room.players) if (p.ws === ws) { found = id; break; }
     if (!found) continue;
     room.players.delete(found);
     if (room.players.size === 0) rooms.delete(roomId);
     else {
       if (room.hostId === found) room.hostId = [...room.players.keys()][0];
+      room.matchLocked = false;
       broadcast(room, { type:'room_state', ...snapshot(room), msg:'有玩家离开了房间' });
     }
     break;
@@ -81,13 +72,12 @@ wss.on('connection', (ws) => {
   safeSend(ws, { type:'hello', playerId });
 
   ws.on('message', (raw) => {
-    let msg;
-    try { msg = JSON.parse(raw.toString()); } catch { return; }
+    let msg; try { msg = JSON.parse(raw.toString()); } catch { return; }
 
     if (msg.type === 'create_room') {
       let roomId = code();
       while (rooms.has(roomId)) roomId = code();
-      const room = { roomId, hostId: playerId, players: new Map() };
+      const room = { roomId, hostId: playerId, players: new Map(), matchLocked:false };
       room.players.set(playerId, createPlayer(playerId, msg.name || '玩家1', ws, 'p1'));
       rooms.set(roomId, room);
       safeSend(ws, { type:'room_state', ...snapshot(room), msg:'房间创建成功' });
@@ -103,11 +93,10 @@ wss.on('connection', (ws) => {
       return;
     }
 
-    let room = null, player = null;
-    for (const r of rooms.values()) {
-      if (r.players.has(playerId)) { room = r; player = r.players.get(playerId); break; }
-    }
-    if (!room || !player) return;
+    const room = findRoomByPlayer(playerId);
+    if (!room) return;
+    const player = room.players.get(playerId);
+    if (!player) return;
 
     if (msg.type === 'input') {
       player.state = {
@@ -117,13 +106,15 @@ wss.on('connection', (ws) => {
         facing: Number(msg.facing ?? player.state.facing),
         action: msg.action || player.state.action,
         hp: Math.max(0, Math.min(100, Number(msg.hp ?? player.state.hp))),
+        energy: Math.max(0, Math.min(100, Number(msg.energy ?? player.state.energy))),
         character: msg.character || player.state.character
       };
-      broadcast(room, { type:'state_update', players: snapshot(room).players });
+      broadcast(room, { type:'state_update', players: snapshot(room).players, locked: room.matchLocked });
       return;
     }
 
     if (msg.type === 'hit') {
+      if (room.matchLocked) return;
       const target = room.players.get(msg.targetId);
       if (!target) return;
       target.state.hp = Math.max(0, target.state.hp - Number(msg.damage || 0));
@@ -132,19 +123,31 @@ wss.on('connection', (ws) => {
         attackerId: playerId,
         targetId: msg.targetId,
         damage: Number(msg.damage || 0),
-        attackType: msg.attackType || 'light',
+        attackType: msg.attackType || 'melee',
         players: snapshot(room).players
       });
       if (target.state.hp <= 0) {
-        broadcast(room, { type:'match_over', winnerId: playerId, winnerName: player.name });
+        room.matchLocked = true;
+        broadcast(room, { type:'finisher', winnerId: playerId, winnerName: player.name, loserId: target.id });
+        setTimeout(() => {
+          broadcast(room, { type:'match_over', winnerId: playerId, winnerName: player.name });
+        }, 2200);
       }
       return;
     }
 
+    if (msg.type === 'projectile') {
+      if (room.matchLocked) return;
+      broadcast(room, { type:'projectile', fromId: playerId, x: msg.x, y: msg.y, vx: msg.vx, vy: msg.vy, attackType:'projectile' });
+      return;
+    }
+
     if (msg.type === 'reset_match') {
+      room.matchLocked = false;
       let first = true;
       for (const p of room.players.values()) {
         p.state.hp = 100;
+        p.state.energy = 100;
         p.state.x = first ? 180 : 620;
         p.state.y = 308;
         p.state.facing = first ? 1 : -1;
@@ -159,4 +162,4 @@ wss.on('connection', (ws) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+server.listen(PORT, () => console.log('Server listening on ' + PORT));

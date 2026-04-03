@@ -1,7 +1,6 @@
 {
   "name": "fight-online",
-  "version": "1.1.0",
-  "description": "Improved 2-player online fighting demo with rooms",
+  "version": "1.2.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
