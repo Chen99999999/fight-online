@@ -23,9 +23,10 @@ const charSelect = document.getElementById('charSelect');
 let ws = null, playerId = null, roomId = null;
 let players = [];
 let keys = { left:false, right:false, up:false, down:false, slash:false, shoot:false, guard:false, ult:false };
-let localState = { x:180, y:378, hp:100, energy:100, facing:1, action:'idle', character:'blade', guard:false, crouch:false, vy:0, grounded:true, item:null, itemTimer:0, invincibleTimer:0 };
+let localState = { x:180, y:398, hp:100, energy:100, facing:1, action:'idle', actionFrame:0, character:'blade', guard:false, crouch:false, vy:0, grounded:true, item:null, itemTimer:0, invincibleTimer:0 };
 let actionCooldown = 0, lastSend = 0, comboCount = 0, comboTimer = 0, locked = false, cinematic = false;
 let hitFx = [], projectiles = [], items = [], theme = 'neon';
+let playerCountShown = 0;
 
 const CHAR_DATA = {
   blade: { name:'火帽刀客', body:'#f97316', arm:'#fdba74', weapon:'#fb7185', hat:'#b91c1c', shoe:'#111827', ult:'火帽刀客 · 处决', speed:4.2, ranged:'knife' },
@@ -44,15 +45,17 @@ function connect() {
     if (msg.type === 'hello') playerId = msg.playerId;
     else if (msg.type === 'error_msg') showMsg(msg.text);
     else if (msg.type === 'room_state') {
-      roomId = msg.roomId;
-      theme = msg.theme || 'neon';
+      theme = msg.theme || theme;
       items = msg.items || [];
+      const oldCount = players.length;
+      roomId = msg.roomId;
       players = (msg.players || []).map(p => ({ ...p, drawX:p.x, drawY:p.y, drawScale:1, bloodTimer:0 }));
       const me = players.find(p => p.id === playerId);
       if (me) Object.assign(localState, { x:me.x, y:me.y, hp:me.hp, energy:me.energy, facing:me.facing, character:me.character, item:me.item, itemTimer:me.itemTimer, invincibleTimer:me.invincibleTimer });
       roomBox.textContent = `房间号：${roomId || '未进入'} ${msg.msg ? '｜' + msg.msg : ''}`;
       locked = false; cinematic = false; syncHud();
-      if (players.length === 2) showMsg('人齐了，狠狠干');
+      if (oldCount < 2 && players.length === 2) showMsg('人齐了，狠狠干');
+      playerCountShown = players.length;
     } else if (msg.type === 'state_update') {
       locked = !!msg.locked; cinematic = !!msg.cinematic; items = msg.items || items; theme = msg.theme || theme;
       const incoming = msg.players || [];
@@ -143,6 +146,7 @@ function performSlash() {
   const other = players.find(p => p.id !== playerId);
   if (!me || !other) return;
   localState.action = 'slash';
+  localState.actionFrame = 12;
   actionCooldown = 14;
   const range = 86;
   const damage = localState.item === 'minigun' ? 12 : 10;
@@ -166,6 +170,7 @@ function performShoot() {
   if (localState.energy < energyCost) return;
   localState.energy -= energyCost;
   localState.action = 'shoot';
+  localState.actionFrame = 8;
   actionCooldown = cd;
 
   const baseX = localState.x + localState.facing * 42;
@@ -190,6 +195,7 @@ function performUlt() {
   if (!inRange) return;
   localState.energy -= 70;
   localState.action = 'ult';
+  localState.actionFrame = 20;
   actionCooldown = 62;
   ws.send(JSON.stringify({ type:'ult_start', targetId: other.id, damage: 38, title:'处决' }));
 }
@@ -197,7 +203,7 @@ function performUlt() {
 function tryPickupItem() {
   if (!roomId || !ws || ws.readyState !== 1) return;
   for (const item of items) {
-    if (Math.abs(item.x - localState.x) < 24 && Math.abs(item.y - (localState.y + 30)) < 30) {
+    if (Math.abs(item.x - localState.x) < 24 && Math.abs(item.y - (localState.y + 60)) < 28) {
       ws.send(JSON.stringify({ type:'pickup_item', itemId: item.id }));
       break;
     }
@@ -218,7 +224,7 @@ function updateProjectiles() {
         pr.life = 0;
       }
     }
-    if (pr.kind === 'grenade' && pr.y > 430) pr.life = 0;
+    if (pr.kind === 'grenade' && pr.y > 500) pr.life = 0;
   });
   projectiles = projectiles.filter(pr => pr.life > 0 && pr.x > -60 && pr.x < 860);
 }
@@ -238,7 +244,7 @@ function updateLocalMovement() {
 
     localState.vy += 0.58;
     localState.y += localState.vy;
-    if (localState.y >= 378) { localState.y = 378; localState.vy = 0; localState.grounded = true; }
+    if (localState.y >= 398) { localState.y = 398; localState.vy = 0; localState.grounded = true; }
     else { localState.grounded = false; }
 
     localState.x = Math.max(50, Math.min(750, localState.x));
@@ -246,6 +252,7 @@ function updateLocalMovement() {
     if (localState.itemTimer > 0) localState.itemTimer--;
     else if (localState.item && localState.item !== 'shield') { localState.item = null; }
     if (localState.invincibleTimer > 0) localState.invincibleTimer--;
+    if (localState.actionFrame > 0) localState.actionFrame--;
 
     tryPickupItem();
 
@@ -259,9 +266,8 @@ function updateLocalMovement() {
       ws.send(JSON.stringify({
         type:'input',
         x:localState.x, y:localState.y, hp:localState.hp, energy:localState.energy,
-        facing:localState.facing, action:localState.action, character:localState.character,
-        guard:localState.guard, crouch:localState.crouch, item:localState.item, itemTimer:localState.itemTimer,
-        invincibleTimer:localState.invincibleTimer
+        facing:localState.facing, action:localState.action, actionFrame:localState.actionFrame, character:localState.character,
+        guard:localState.guard, item:localState.item, itemTimer:localState.itemTimer, invincibleTimer:localState.invincibleTimer
       }));
     }
   }
@@ -273,7 +279,7 @@ function update() {
   players.forEach(p => {
     if (p.id === playerId) {
       p.x = localState.x; p.y = localState.y; p.hp = localState.hp; p.energy = localState.energy;
-      p.facing = localState.facing; p.action = localState.action; p.character = localState.character; p.guard = localState.guard; p.crouch = localState.crouch;
+      p.facing = localState.facing; p.action = localState.action; p.actionFrame = localState.actionFrame; p.character = localState.character; p.guard = localState.guard; p.crouch = localState.crouch;
       p.item = localState.item; p.itemTimer = localState.itemTimer; p.invincibleTimer = localState.invincibleTimer;
       p.drawX = p.x; p.drawY = p.y;
       if (p.drawScale == null) p.drawScale = 1;
@@ -301,13 +307,14 @@ function update() {
 }
 
 function drawTheme() {
-  const themes = {
+  const palettes = {
     neon: ['#1e293b', '#111827'],
     desert: ['#7c5a3a', '#4a3425'],
     snow: ['#334155', '#475569'],
-    dojo: ['#3b2f2f', '#1f2937']
+    dojo: ['#3b2f2f', '#1f2937'],
+    forest: ['#16351f', '#10251a']
   };
-  const [c1, c2] = themes[theme] || themes.neon;
+  const [c1, c2] = palettes[theme] || palettes.neon;
   const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
   g.addColorStop(0, c1); g.addColorStop(1, c2);
   ctx.fillStyle = g; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -317,14 +324,24 @@ function drawTheme() {
     ctx.fillRect(610, 54, 80, 80);
     for (let i = 0; i < 7; i++) { ctx.fillStyle = `rgba(255,255,255,${0.03 + i*0.01})`; ctx.fillRect(i*120+20, 180-i*4, 60, 270+i*4); }
   } else if (theme === 'desert') {
-    ctx.fillStyle = '#eab308'; ctx.fillRect(540, 72, 96, 96);
-    for (let i = 0; i < 5; i++) { ctx.fillStyle = 'rgba(120,68,35,.45)'; ctx.fillRect(i*160+20, 260, 70, 180); }
+    ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(660, 92, 48, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#8b5e34'; for (let i = 0; i < 4; i++) ctx.fillRect(i*180+20, 250, 90, 230);
+    ctx.fillStyle = '#d97706'; ctx.beginPath(); ctx.moveTo(0,420); ctx.lineTo(200,360); ctx.lineTo(460,430); ctx.lineTo(800,350); ctx.lineTo(800,560); ctx.lineTo(0,560); ctx.fill();
   } else if (theme === 'snow') {
-    ctx.fillStyle = '#e0f2fe'; ctx.fillRect(610, 54, 70, 70);
-    for (let i = 0; i < 7; i++) { ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(i*120+20, 220-i*3, 54, 220+i*3); }
+    ctx.fillStyle = '#e0f2fe'; ctx.beginPath(); ctx.arc(650, 92, 40, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.08)'; for (let i = 0; i < 10; i++) ctx.fillRect(i*86, 430 - (i%3)*12, 50, 130 + (i%3)*12);
+    ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 470, 800, 90);
   } else if (theme === 'dojo') {
-    ctx.fillStyle = '#f59e0b'; for (let i = 0; i < 8; i++) ctx.fillRect(i*100+20, 120, 8, 320);
+    ctx.fillStyle = '#f59e0b'; for (let i = 0; i < 8; i++) ctx.fillRect(i*100+20, 120, 8, 360);
     ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fillRect(0, 180, 800, 18);
+    ctx.fillStyle = '#7c2d12'; ctx.fillRect(0, 470, 800, 90);
+  } else if (theme === 'forest') {
+    ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(660, 92, 44, 0, Math.PI*2); ctx.fill();
+    for (let i = 0; i < 8; i++) {
+      ctx.fillStyle = '#14532d'; ctx.fillRect(i*96+20, 220, 22, 260);
+      ctx.fillStyle = '#166534'; ctx.beginPath(); ctx.arc(i*96+31, 200, 44, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle = '#3f6212'; ctx.fillRect(0, 470, 800, 90);
   }
 
   ctx.fillStyle = '#334155';
@@ -335,13 +352,9 @@ function drawTheme() {
 
 function drawItem(item) {
   ctx.save();
-  if (item.type === 'minigun') ctx.fillStyle = '#ef4444';
-  if (item.type === 'grenade') ctx.fillStyle = '#f59e0b';
-  if (item.type === 'heal') ctx.fillStyle = '#22c55e';
-  if (item.type === 'shield') ctx.fillStyle = '#06b6d4';
-  ctx.beginPath();
-  ctx.arc(item.x, item.y, 12, 0, Math.PI * 2);
-  ctx.fill();
+  const colors = { minigun:'#ef4444', grenade:'#f59e0b', heal:'#22c55e', shield:'#06b6d4' };
+  ctx.fillStyle = colors[item.type] || '#fff';
+  ctx.beginPath(); ctx.arc(item.x, item.y, 12, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 10px sans-serif';
   ctx.textAlign = 'center';
@@ -386,26 +399,24 @@ function drawCharacterParts(p, char) {
   ctx.fillStyle = char.arm;
   ctx.fillRect(-28, 0 + crouchOffset, 8, 24 - (p.crouch ? 8 : 0));
   ctx.fillRect(20, 0 + crouchOffset, 8, 24 - (p.crouch ? 8 : 0));
-
-  if (char.ranged === 'arrow') {
-    ctx.strokeStyle = '#d1fae5';
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(26, 4 + crouchOffset, 10, -1.2, 1.2); ctx.stroke();
-  } else if (char.ranged === 'bullet') {
-    ctx.fillStyle = '#e5e7eb';
-    ctx.fillRect(24, 2 + crouchOffset, 16, 6);
-  } else {
-    ctx.fillStyle = '#e5e7eb';
-    ctx.fillRect(24, 0 + crouchOffset, 18, 6);
-  }
 }
 
 function drawAttackEffects(p, char) {
   if (p.action === 'slash') {
-    const len = 28;
+    const len = 30;
     ctx.fillStyle = char.weapon;
-    if (p.facing > 0) ctx.fillRect(28, 10, len, 8);
-    else ctx.fillRect(-28 - len, 10, len, 8);
+    if (p.facing > 0) ctx.fillRect(28, 6, len, 8);
+    else ctx.fillRect(-28 - len, 6, len, 8);
+
+    // swing arc
+    const t = Math.max(0, p.actionFrame || 0);
+    const a1 = p.facing > 0 ? -0.9 : 2.1;
+    const a2 = p.facing > 0 ? 0.8 : 3.8;
+    ctx.strokeStyle = 'rgba(255,255,255,.42)';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(p.facing > 0 ? 20 : -20, 8, 28 + (12 - t), a1, a2);
+    ctx.stroke();
   }
   if (p.guard) {
     ctx.strokeStyle = '#93c5fd';
@@ -422,6 +433,20 @@ function drawAttackEffects(p, char) {
   }
 }
 
+function drawCharacterWeaponFlavor(p, char) {
+  if (char.ranged === 'arrow') {
+    ctx.strokeStyle = '#d1fae5';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(26, 4, 10, -1.2, 1.2); ctx.stroke();
+  } else if (char.ranged === 'bullet') {
+    ctx.fillStyle = '#e5e7eb';
+    ctx.fillRect(24, 2, 16, 6);
+  } else {
+    ctx.fillStyle = '#e5e7eb';
+    ctx.fillRect(24, 0, 18, 6);
+  }
+}
+
 function drawBlockFighter(p) {
   const char = CHAR_DATA[p.character] || CHAR_DATA.blade;
   const x = p.drawX ?? p.x, y = p.drawY ?? p.y;
@@ -431,11 +456,14 @@ function drawBlockFighter(p) {
   ctx.scale(p.drawScale || 1, p.drawScale || 1);
 
   drawCharacterParts(p, char);
+  drawCharacterWeaponFlavor(p, char);
   drawAttackEffects(p, char);
 
   if (p.bloodTimer > 0) {
     ctx.fillStyle = 'rgba(239,68,68,.16)';
     ctx.fillRect(-34, -42, 68, 96);
+    ctx.fillStyle = 'rgba(239,68,68,.42)';
+    ctx.beginPath(); ctx.arc(0, 24, 18, 0, Math.PI*2); ctx.fill();
   }
 
   ctx.fillStyle = '#fff';
@@ -448,7 +476,7 @@ function drawBlockFighter(p) {
 
 function drawProjectile(pr) {
   ctx.save();
-  ctx.fillStyle = pr.kind === 'grenade' ? '#f59e0b' : (pr.kind === 'shoot' ? '#93c5fd' : '#c084fc');
+  ctx.fillStyle = pr.kind === 'grenade' ? '#f59e0b' : '#93c5fd';
   if (pr.kind === 'grenade') {
     ctx.beginPath(); ctx.arc(pr.x, pr.y, 10, 0, Math.PI * 2); ctx.fill();
   } else {

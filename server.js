@@ -11,6 +11,7 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const rooms = new Map();
+const GROUND_Y = 398;
 
 function code() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -20,20 +21,19 @@ function code() {
 }
 function safeSend(ws, payload) { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); }
 function broadcast(room, payload) { for (const p of room.players.values()) safeSend(p.ws, payload); }
-function findRoomByPlayer(playerId) {
-  for (const r of rooms.values()) if (r.players.has(playerId)) return r;
-  return null;
-}
+function findRoomByPlayer(playerId) { for (const r of rooms.values()) if (r.players.has(playerId)) return r; return null; }
+
 function createPlayer(id, name, ws, role) {
   return {
     id, name, ws, role,
     state: {
       x: role === 'p1' ? 180 : 620,
-      y: 318,
+      y: GROUND_Y,
       hp: 100,
       energy: 100,
       facing: role === 'p1' ? 1 : -1,
       action: 'idle',
+      actionFrame: 0,
       guard: false,
       character: role === 'p1' ? 'blade' : 'ranger',
       item: null,
@@ -42,6 +42,7 @@ function createPlayer(id, name, ws, role) {
     }
   };
 }
+
 function snapshot(room) {
   return {
     roomId: room.roomId,
@@ -51,34 +52,34 @@ function snapshot(room) {
     players: [...room.players.values()].map(p => ({
       id: p.id, name: p.name, role: p.role,
       x: p.state.x, y: p.state.y, hp: p.state.hp, energy: p.state.energy,
-      facing: p.state.facing, action: p.state.action, guard: p.state.guard,
-      character: p.state.character || 'blade',
+      facing: p.state.facing, action: p.state.action, actionFrame: p.state.actionFrame,
+      guard: p.state.guard, character: p.state.character || 'blade',
       item: p.state.item, itemTimer: p.state.itemTimer, invincibleTimer: p.state.invincibleTimer
     }))
   };
 }
+
 function randomTheme() {
-  const themes = ['neon', 'desert', 'snow', 'dojo'];
+  const themes = ['neon', 'desert', 'snow', 'dojo', 'forest'];
   return themes[Math.floor(Math.random() * themes.length)];
 }
+
 function randomItem(idCounter) {
   const types = ['minigun', 'grenade', 'heal', 'shield'];
   const type = types[Math.floor(Math.random() * types.length)];
-  return {
-    id: 'item_' + idCounter,
-    type,
-    x: 240 + Math.random() * 320,
-    y: 338
-  };
+  return { id: 'item_' + idCounter, type, x: 240 + Math.random() * 320, y: 458 };
 }
+
 function cleanupPlayer(ws) {
   for (const [roomId, room] of rooms) {
     let found = null;
     for (const [id, p] of room.players) if (p.ws === ws) { found = id; break; }
     if (!found) continue;
     room.players.delete(found);
-    if (room.players.size === 0) rooms.delete(roomId);
-    else {
+    if (room.players.size === 0) {
+      if (room.itemInterval) clearInterval(room.itemInterval);
+      rooms.delete(roomId);
+    } else {
       if (room.hostId === found) room.hostId = [...room.players.keys()][0];
       room.locked = false;
       room.cinematic = false;
@@ -135,9 +136,10 @@ wss.on('connection', (ws) => {
       player.state = {
         ...player.state,
         x: Math.max(40, Math.min(760, Number(msg.x ?? player.state.x))),
-        y: Math.max(100, Math.min(330, Number(msg.y ?? player.state.y))),
+        y: GROUND_Y + Math.max(-120, Math.min(0, Number(msg.y ?? player.state.y) - GROUND_Y)),
         facing: Number(msg.facing ?? player.state.facing),
         action: msg.action || player.state.action,
+        actionFrame: Number(msg.actionFrame ?? player.state.actionFrame ?? 0),
         guard: !!msg.guard,
         hp: Math.max(0, Math.min(100, Number(msg.hp ?? player.state.hp))),
         energy: Math.max(0, Math.min(100, Number(msg.energy ?? player.state.energy))),
@@ -155,11 +157,9 @@ wss.on('connection', (ws) => {
       if (idx === -1) return;
       const item = room.items[idx];
       room.items.splice(idx, 1);
-      if (item.type === 'heal') {
-        player.state.hp = Math.min(100, player.state.hp + 24);
-      } else if (item.type === 'shield') {
-        player.state.invincibleTimer = 280;
-      } else {
+      if (item.type === 'heal') player.state.hp = Math.min(100, player.state.hp + 24);
+      else if (item.type === 'shield') player.state.invincibleTimer = 280;
+      else {
         player.state.item = item.type;
         player.state.itemTimer = item.type === 'minigun' ? 260 : 140;
       }
@@ -227,9 +227,10 @@ wss.on('connection', (ws) => {
         p.state.hp = 100;
         p.state.energy = 100;
         p.state.x = first ? 180 : 620;
-        p.state.y = 318;
+        p.state.y = GROUND_Y;
         p.state.facing = first ? 1 : -1;
         p.state.action = 'idle';
+        p.state.actionFrame = 0;
         p.state.guard = false;
         p.state.item = null;
         p.state.itemTimer = 0;
