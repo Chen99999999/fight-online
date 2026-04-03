@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <title>双人联机PK v4</title>
+  <title>双人联机PK v5</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div>
-      <div class="title">双人联机 PK v4</div>
-      <div class="sub">特色角色 + 跳跃/下蹲 + 处决式大招动画</div>
+      <div class="title">双人联机 PK v5</div>
+      <div class="sub">挥刀 / 射击 / 格挡 / 处决 + 道具 + 大画面慢动作</div>
     </div>
     <div id="status">连接中...</div>
   </header>
@@ -20,9 +20,9 @@
     <div class="row stack-mobile">
       <input id="nameInput" placeholder="你的名字" value="玩家" />
       <select id="charSelect">
-        <option value="blaze">火帽刀客</option>
-        <option value="frost">冰弓仔</option>
-        <option value="shadow">影子牛仔</option>
+        <option value="blade">火帽刀客</option>
+        <option value="ranger">冰弓仔</option>
+        <option value="cowboy">影子牛仔</option>
       </select>
     </div>
     <div class="row room-row">
@@ -31,7 +31,7 @@
       <button id="joinBtn">加入房间</button>
     </div>
     <div class="room-box" id="roomBox">房间号：未进入</div>
-    <div class="tips">左边控制移动、跳、蹲；右边控制近战、重击、远程、大招。大招是高伤害处决动画，不是一键必死。</div>
+    <div class="tips">攻击键精简成 4 个：挥刀、射击、格挡、处决。格挡能减伤，但收招有后摇。地上会随机掉短暂机枪、短暂无敌、手雷、恢复。</div>
   </section>
 
   <section class="hud panel">
@@ -50,10 +50,10 @@
     </div>
   </section>
 
-  <section class="arena panel">
-    <canvas id="game" width="800" height="480"></canvas>
+  <section class="arena panel arena-big">
+    <canvas id="game" width="800" height="560"></canvas>
     <div id="overlayMsg" class="overlay-msg hidden"></div>
-    <div id="ultOverlay" class="ult-overlay hidden"><div id="ultText" class="ult-text">终极处决</div></div>
+    <div id="ultOverlay" class="ult-overlay hidden"><div id="ultText" class="ult-text">处决</div></div>
   </section>
 
   <footer class="controls">
@@ -67,9 +67,9 @@
     <div class="skill-box">
       <div class="joy-title">攻击</div>
       <div class="skill-cluster">
-        <button data-k="light" class="skill light">近战</button>
-        <button data-k="heavy" class="skill heavy">重击</button>
-        <button data-k="skill" class="skill tech">远程</button>
+        <button data-k="slash" class="skill light">挥刀</button>
+        <button data-k="shoot" class="skill heavy">射击</button>
+        <button data-k="guard" class="skill tech">格挡</button>
         <button data-k="ult" class="skill ult">处决</button>
       </div>
       <button id="resetBtn" class="reset">重开</button>
