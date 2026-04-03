@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <title>双人联机PK v3</title>
+  <title>双人联机PK v4</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div>
-      <div class="title">双人联机 PK v3</div>
-      <div class="sub">近战 + 弹丸 + 能量条 + 处决动画</div>
+      <div class="title">双人联机 PK v4</div>
+      <div class="sub">特色角色 + 跳跃/下蹲 + 处决式大招动画</div>
     </div>
     <div id="status">连接中...</div>
   </header>
@@ -20,9 +20,9 @@
     <div class="row stack-mobile">
       <input id="nameInput" placeholder="你的名字" value="玩家" />
       <select id="charSelect">
-        <option value="blaze">烈焰方块人</option>
-        <option value="frost">寒霜方块人</option>
-        <option value="shadow">暗影方块人</option>
+        <option value="blaze">火帽刀客</option>
+        <option value="frost">冰弓仔</option>
+        <option value="shadow">影子牛仔</option>
       </select>
     </div>
     <div class="row room-row">
@@ -31,6 +31,7 @@
       <button id="joinBtn">加入房间</button>
     </div>
     <div class="room-box" id="roomBox">房间号：未进入</div>
+    <div class="tips">左边控制移动、跳、蹲；右边控制近战、重击、远程、大招。大招是高伤害处决动画，不是一键必死。</div>
   </section>
 
   <section class="hud panel">
@@ -50,18 +51,17 @@
   </section>
 
   <section class="arena panel">
-    <canvas id="game" width="800" height="460"></canvas>
+    <canvas id="game" width="800" height="480"></canvas>
     <div id="overlayMsg" class="overlay-msg hidden"></div>
-    <div id="ultOverlay" class="ult-overlay hidden"><div id="ultText" class="ult-text">终极必杀</div></div>
-    <div id="finisherOverlay" class="finisher-overlay hidden"><div id="finisherText" class="finisher-text">处决</div></div>
+    <div id="ultOverlay" class="ult-overlay hidden"><div id="ultText" class="ult-text">终极处决</div></div>
   </section>
 
   <footer class="controls">
     <div class="joystick-box">
       <div class="joy-title">移动</div>
       <div class="joy-grid">
-        <div></div><button data-k="up" class="joy">↑</button><div></div>
-        <button data-k="left" class="joy">←</button><button data-k="down" class="joy">↓</button><button data-k="right" class="joy">→</button>
+        <div></div><button data-k="up" class="joy">跳</button><div></div>
+        <button data-k="left" class="joy">左</button><button data-k="down" class="joy">蹲</button><button data-k="right" class="joy">右</button>
       </div>
     </div>
     <div class="skill-box">
@@ -69,8 +69,8 @@
       <div class="skill-cluster">
         <button data-k="light" class="skill light">近战</button>
         <button data-k="heavy" class="skill heavy">重击</button>
-        <button data-k="skill" class="skill tech">弹丸</button>
-        <button data-k="ult" class="skill ult">必杀</button>
+        <button data-k="skill" class="skill tech">远程</button>
+        <button data-k="ult" class="skill ult">处决</button>
       </div>
       <button id="resetBtn" class="reset">重开</button>
     </div>

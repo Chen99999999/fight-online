@@ -34,7 +34,7 @@ function createPlayer(id, name, ws, role) {
       energy: 100,
       facing: role === 'p1' ? 1 : -1,
       action: 'idle',
-      color: role === 'p1' ? '#f97316' : '#60a5fa',
+      crouch: false,
       character: role === 'p1' ? 'blaze' : 'frost'
     }
   };
@@ -46,7 +46,7 @@ function snapshot(room) {
     players: [...room.players.values()].map(p => ({
       id: p.id, name: p.name, role: p.role,
       x: p.state.x, y: p.state.y, hp: p.state.hp, energy: p.state.energy,
-      facing: p.state.facing, action: p.state.action, color: p.state.color,
+      facing: p.state.facing, action: p.state.action, crouch: p.state.crouch,
       character: p.state.character || 'blaze'
     }))
   };
@@ -60,7 +60,8 @@ function cleanupPlayer(ws) {
     if (room.players.size === 0) rooms.delete(roomId);
     else {
       if (room.hostId === found) room.hostId = [...room.players.keys()][0];
-      room.matchLocked = false;
+      room.locked = false;
+      room.cinematic = false;
       broadcast(room, { type:'room_state', ...snapshot(room), msg:'有玩家离开了房间' });
     }
     break;
@@ -77,7 +78,7 @@ wss.on('connection', (ws) => {
     if (msg.type === 'create_room') {
       let roomId = code();
       while (rooms.has(roomId)) roomId = code();
-      const room = { roomId, hostId: playerId, players: new Map(), matchLocked:false };
+      const room = { roomId, hostId: playerId, players: new Map(), locked:false, cinematic:false };
       room.players.set(playerId, createPlayer(playerId, msg.name || '玩家1', ws, 'p1'));
       rooms.set(roomId, room);
       safeSend(ws, { type:'room_state', ...snapshot(room), msg:'房间创建成功' });
@@ -102,19 +103,20 @@ wss.on('connection', (ws) => {
       player.state = {
         ...player.state,
         x: Math.max(40, Math.min(760, Number(msg.x ?? player.state.x))),
-        y: Math.max(120, Math.min(330, Number(msg.y ?? player.state.y))),
+        y: Math.max(110, Math.min(330, Number(msg.y ?? player.state.y))),
         facing: Number(msg.facing ?? player.state.facing),
         action: msg.action || player.state.action,
+        crouch: !!msg.crouch,
         hp: Math.max(0, Math.min(100, Number(msg.hp ?? player.state.hp))),
         energy: Math.max(0, Math.min(100, Number(msg.energy ?? player.state.energy))),
         character: msg.character || player.state.character
       };
-      broadcast(room, { type:'state_update', players: snapshot(room).players, locked: room.matchLocked });
+      broadcast(room, { type:'state_update', players: snapshot(room).players, locked: room.locked, cinematic: room.cinematic });
       return;
     }
 
     if (msg.type === 'hit') {
-      if (room.matchLocked) return;
+      if (room.locked || room.cinematic) return;
       const target = room.players.get(msg.targetId);
       if (!target) return;
       target.state.hp = Math.max(0, target.state.hp - Number(msg.damage || 0));
@@ -126,24 +128,48 @@ wss.on('connection', (ws) => {
         attackType: msg.attackType || 'melee',
         players: snapshot(room).players
       });
-      if (target.state.hp <= 0) {
-        room.matchLocked = true;
-        broadcast(room, { type:'finisher', winnerId: playerId, winnerName: player.name, loserId: target.id });
-        setTimeout(() => {
-          broadcast(room, { type:'match_over', winnerId: playerId, winnerName: player.name });
-        }, 2200);
-      }
       return;
     }
 
     if (msg.type === 'projectile') {
-      if (room.matchLocked) return;
+      if (room.locked || room.cinematic) return;
       broadcast(room, { type:'projectile', fromId: playerId, x: msg.x, y: msg.y, vx: msg.vx, vy: msg.vy, attackType:'projectile' });
       return;
     }
 
+    if (msg.type === 'ult_start') {
+      if (room.locked || room.cinematic) return;
+      room.cinematic = true;
+      const target = room.players.get(msg.targetId);
+      if (!target) {
+        room.cinematic = false;
+        return;
+      }
+      broadcast(room, {
+        type:'ult_cinematic',
+        attackerId: playerId,
+        targetId: msg.targetId,
+        title: msg.title || '处决',
+        players: snapshot(room).players
+      });
+      setTimeout(() => {
+        target.state.hp = Math.max(0, target.state.hp - Number(msg.damage || 35));
+        room.cinematic = false;
+        broadcast(room, {
+          type:'hit_effect',
+          attackerId: playerId,
+          targetId: msg.targetId,
+          damage: Number(msg.damage || 35),
+          attackType:'ult',
+          players: snapshot(room).players
+        });
+      }, 1700);
+      return;
+    }
+
     if (msg.type === 'reset_match') {
-      room.matchLocked = false;
+      room.locked = false;
+      room.cinematic = false;
       let first = true;
       for (const p of room.players.values()) {
         p.state.hp = 100;
@@ -152,6 +178,7 @@ wss.on('connection', (ws) => {
         p.state.y = 308;
         p.state.facing = first ? 1 : -1;
         p.state.action = 'idle';
+        p.state.crouch = false;
         first = false;
       }
       broadcast(room, { type:'room_state', ...snapshot(room), msg:'重新开打' });
