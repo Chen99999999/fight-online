@@ -11,8 +11,18 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const rooms = new Map();
-const GROUND_Y = 398;
+const W = 800, H = 560;
+const CELL = 40;
 
+function makeMap() {
+  const walls = [];
+  const iron = [];
+  // outer blocks / center cover
+  for (let x = 120; x <= 640; x += 80) walls.push({x, y: 200}, {x, y: 320});
+  walls.push({x: 360, y: 240}, {x: 400, y: 240}, {x: 360, y: 280}, {x: 400, y: 280});
+  iron.push({x: 200, y: 120}, {x: 560, y: 120}, {x: 200, y: 400}, {x: 560, y: 400});
+  return {walls, iron};
+}
 function code() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s = '';
@@ -27,77 +37,59 @@ function createPlayer(id, name, ws, role) {
   return {
     id, name, ws, role,
     state: {
-      x: role === 'p1' ? 180 : 620,
-      y: GROUND_Y,
-      hp: 100,
-      energy: 100,
-      facing: role === 'p1' ? 1 : -1,
-      action: 'idle',
-      actionFrame: 0,
-      guard: false,
-      character: role === 'p1' ? 'blade' : 'ranger',
-      item: null,
-      itemTimer: 0,
-      invincibleTimer: 0
+      x: role === 'p1' ? 120 : 680,
+      y: role === 'p1' ? 480 : 80,
+      dir: role === 'p1' ? 'up' : 'down',
+      hp: 3,
+      alive: true,
+      respawn: 0,
+      color: role === 'p1' ? '#f59e0b' : '#60a5fa'
     }
   };
 }
-
 function snapshot(room) {
   return {
     roomId: room.roomId,
-    hostId: room.hostId,
-    theme: room.theme,
-    items: room.items,
     players: [...room.players.values()].map(p => ({
       id: p.id, name: p.name, role: p.role,
-      x: p.state.x, y: p.state.y, hp: p.state.hp, energy: p.state.energy,
-      facing: p.state.facing, action: p.state.action, actionFrame: p.state.actionFrame,
-      guard: p.state.guard, character: p.state.character || 'blade',
-      item: p.state.item, itemTimer: p.state.itemTimer, invincibleTimer: p.state.invincibleTimer
-    }))
+      x: p.state.x, y: p.state.y, dir: p.state.dir,
+      hp: p.state.hp, alive: p.state.alive, respawn: p.state.respawn,
+      color: p.state.color
+    })),
+    bullets: room.bullets,
+    map: room.map
   };
 }
-
-function randomTheme() {
-  const themes = ['neon', 'desert', 'snow', 'dojo', 'forest'];
-  return themes[Math.floor(Math.random() * themes.length)];
+function aabb(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
 }
-
-function randomItem(idCounter) {
-  const types = ['minigun', 'grenade', 'heal', 'shield'];
-  const type = types[Math.floor(Math.random() * types.length)];
-  return { id: 'item_' + idCounter, type, x: 240 + Math.random() * 320, y: 458 };
+function collideMap(x, y, room) {
+  for (const b of room.map.walls) if (aabb(x-16, y-16, 32, 32, b.x, b.y, CELL, CELL)) return true;
+  for (const b of room.map.iron) if (aabb(x-16, y-16, 32, 32, b.x, b.y, CELL, CELL)) return true;
+  return x < 20 || x > W-20 || y < 20 || y > H-20;
 }
-
+function resetRoom(room) {
+  room.map = makeMap();
+  room.bullets = [];
+  for (const p of room.players.values()) {
+    p.state.x = p.role === 'p1' ? 120 : 680;
+    p.state.y = p.role === 'p1' ? 480 : 80;
+    p.state.dir = p.role === 'p1' ? 'up' : 'down';
+    p.state.hp = 3;
+    p.state.alive = true;
+    p.state.respawn = 0;
+  }
+}
 function cleanupPlayer(ws) {
   for (const [roomId, room] of rooms) {
     let found = null;
     for (const [id, p] of room.players) if (p.ws === ws) { found = id; break; }
     if (!found) continue;
     room.players.delete(found);
-    if (room.players.size === 0) {
-      if (room.itemInterval) clearInterval(room.itemInterval);
-      rooms.delete(roomId);
-    } else {
-      if (room.hostId === found) room.hostId = [...room.players.keys()][0];
-      room.locked = false;
-      room.cinematic = false;
-      broadcast(room, { type:'room_state', ...snapshot(room), msg:'有玩家离开了房间' });
-    }
+    if (room.players.size === 0) rooms.delete(roomId);
+    else broadcast(room, { type:'room_state', ...snapshot(room), msg:'有玩家离开了房间' });
     break;
   }
-}
-
-function scheduleItems(room) {
-  if (room.itemInterval) clearInterval(room.itemInterval);
-  room.itemInterval = setInterval(() => {
-    if (room.items.length < 2) {
-      room.itemCounter += 1;
-      room.items.push(randomItem(room.itemCounter));
-      broadcast(room, { type:'room_state', ...snapshot(room), msg:'新道具掉落了' });
-    }
-  }, 7000);
 }
 
 wss.on('connection', (ws) => {
@@ -110,14 +102,12 @@ wss.on('connection', (ws) => {
     if (msg.type === 'create_room') {
       let roomId = code();
       while (rooms.has(roomId)) roomId = code();
-      const room = { roomId, hostId: playerId, players: new Map(), locked:false, cinematic:false, theme: randomTheme(), items: [], itemCounter: 0 };
+      const room = { roomId, players:new Map(), bullets:[], map:makeMap() };
       room.players.set(playerId, createPlayer(playerId, msg.name || '玩家1', ws, 'p1'));
       rooms.set(roomId, room);
-      scheduleItems(room);
       safeSend(ws, { type:'room_state', ...snapshot(room), msg:'房间创建成功' });
       return;
     }
-
     if (msg.type === 'join_room') {
       const room = rooms.get((msg.roomId || '').toUpperCase());
       if (!room) return safeSend(ws, { type:'error_msg', text:'房间不存在' });
@@ -133,111 +123,62 @@ wss.on('connection', (ws) => {
     if (!player) return;
 
     if (msg.type === 'input') {
-      player.state = {
-        ...player.state,
-        x: Math.max(40, Math.min(760, Number(msg.x ?? player.state.x))),
-        y: GROUND_Y + Math.max(-120, Math.min(0, Number(msg.y ?? player.state.y) - GROUND_Y)),
-        facing: Number(msg.facing ?? player.state.facing),
-        action: msg.action || player.state.action,
-        actionFrame: Number(msg.actionFrame ?? player.state.actionFrame ?? 0),
-        guard: !!msg.guard,
-        hp: Math.max(0, Math.min(100, Number(msg.hp ?? player.state.hp))),
-        energy: Math.max(0, Math.min(100, Number(msg.energy ?? player.state.energy))),
-        character: msg.character || player.state.character,
-        item: msg.item ?? player.state.item,
-        itemTimer: Math.max(0, Number(msg.itemTimer ?? player.state.itemTimer)),
-        invincibleTimer: Math.max(0, Number(msg.invincibleTimer ?? player.state.invincibleTimer))
-      };
-      broadcast(room, { type:'state_update', players: snapshot(room).players, locked: room.locked, cinematic: room.cinematic, items: room.items, theme: room.theme });
+      player.state.x = Math.max(20, Math.min(W-20, Number(msg.x ?? player.state.x)));
+      player.state.y = Math.max(20, Math.min(H-20, Number(msg.y ?? player.state.y)));
+      player.state.dir = msg.dir || player.state.dir;
+      player.state.alive = !!msg.alive;
+      player.state.hp = Math.max(0, Math.min(3, Number(msg.hp ?? player.state.hp)));
+      player.state.respawn = Math.max(0, Number(msg.respawn ?? player.state.respawn));
+      broadcast(room, { type:'state_update', players: snapshot(room).players });
       return;
     }
-
-    if (msg.type === 'pickup_item') {
-      const idx = room.items.findIndex(i => i.id === msg.itemId);
-      if (idx === -1) return;
-      const item = room.items[idx];
-      room.items.splice(idx, 1);
-      if (item.type === 'heal') player.state.hp = Math.min(100, player.state.hp + 24);
-      else if (item.type === 'shield') player.state.invincibleTimer = 280;
-      else {
-        player.state.item = item.type;
-        player.state.itemTimer = item.type === 'minigun' ? 260 : 140;
-      }
-      broadcast(room, { type:'room_state', ...snapshot(room), msg:'道具已拾取' });
-      return;
-    }
-
-    if (msg.type === 'hit') {
-      if (room.locked || room.cinematic) return;
-      const target = room.players.get(msg.targetId);
-      if (!target) return;
-      let damage = Number(msg.damage || 0);
-      if (target.state.invincibleTimer > 0) damage = 0;
-      else if (target.state.guard && !msg.guardBreak) damage = Math.floor(damage * 0.25);
-      target.state.hp = Math.max(0, target.state.hp - damage);
-      broadcast(room, {
-        type:'hit_effect',
-        attackerId: playerId,
-        targetId: msg.targetId,
-        damage,
-        attackType: msg.attackType || 'slash',
-        blocked: !!target.state.guard && !msg.guardBreak,
-        players: snapshot(room).players
+    if (msg.type === 'shoot') {
+      room.bullets.push({
+        id: 'b_' + Math.random().toString(36).slice(2,9),
+        ownerId: playerId,
+        x: msg.x, y: msg.y, vx: msg.vx, vy: msg.vy, life: 90
       });
+      broadcast(room, { type:'spawn_bullet', bullet: room.bullets[room.bullets.length-1] });
       return;
     }
-
-    if (msg.type === 'projectile') {
-      if (room.locked || room.cinematic) return;
-      broadcast(room, { type:'projectile', ...msg, fromId: playerId });
+    if (msg.type === 'bullet_hit_wall') {
+      const idx = room.map.walls.findIndex(w => w.x === msg.wx && w.y === msg.wy);
+      if (idx !== -1) room.map.walls.splice(idx, 1);
+      room.bullets = room.bullets.filter(b => b.id !== msg.bulletId);
+      broadcast(room, { type:'room_state', ...snapshot(room), msg:'' });
       return;
     }
-
-    if (msg.type === 'ult_start') {
-      if (room.locked || room.cinematic) return;
+    if (msg.type === 'bullet_remove') {
+      room.bullets = room.bullets.filter(b => b.id !== msg.bulletId);
+      broadcast(room, { type:'bullets', bullets: room.bullets });
+      return;
+    }
+    if (msg.type === 'tank_hit') {
       const target = room.players.get(msg.targetId);
-      if (!target) return;
-      room.cinematic = true;
-      broadcast(room, { type:'ult_cinematic', attackerId: playerId, targetId: msg.targetId, title: msg.title || '处决', players: snapshot(room).players });
-      setTimeout(() => {
-        let damage = Number(msg.damage || 36);
-        if (target.state.invincibleTimer > 0) damage = 0;
-        target.state.hp = Math.max(0, target.state.hp - damage);
-        room.cinematic = false;
-        broadcast(room, {
-          type:'hit_effect',
-          attackerId: playerId,
-          targetId: msg.targetId,
-          damage,
-          attackType:'ult',
-          blocked:false,
-          players: snapshot(room).players
-        });
-      }, 1800);
+      if (!target || !target.state.alive) return;
+      target.state.hp = Math.max(0, target.state.hp - 1);
+      if (target.state.hp <= 0) {
+        target.state.alive = false;
+        target.state.respawn = 120;
+      }
+      room.bullets = room.bullets.filter(b => b.id !== msg.bulletId);
+      broadcast(room, { type:'room_state', ...snapshot(room), msg: target.state.hp <= 0 ? `${target.name} 被打爆了` : '' });
       return;
     }
-
+    if (msg.type === 'respawn_done') {
+      player.state.alive = true;
+      player.state.hp = 3;
+      player.state.x = player.role === 'p1' ? 120 : 680;
+      player.state.y = player.role === 'p1' ? 480 : 80;
+      player.state.dir = player.role === 'p1' ? 'up' : 'down';
+      player.state.respawn = 0;
+      broadcast(room, { type:'room_state', ...snapshot(room), msg:'重生' });
+      return;
+    }
     if (msg.type === 'reset_match') {
-      room.locked = false;
-      room.cinematic = false;
-      room.theme = randomTheme();
-      room.items = [];
-      let first = true;
-      for (const p of room.players.values()) {
-        p.state.hp = 100;
-        p.state.energy = 100;
-        p.state.x = first ? 180 : 620;
-        p.state.y = GROUND_Y;
-        p.state.facing = first ? 1 : -1;
-        p.state.action = 'idle';
-        p.state.actionFrame = 0;
-        p.state.guard = false;
-        p.state.item = null;
-        p.state.itemTimer = 0;
-        p.state.invincibleTimer = 0;
-        first = false;
-      }
+      resetRoom(room);
       broadcast(room, { type:'room_state', ...snapshot(room), msg:'重新开打' });
+      return;
     }
   });
 

@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <title>双人联机PK v6</title>
+  <title>双人联机坦克大战 v1</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div>
-      <div class="title">双人联机 PK v6</div>
-      <div class="sub">修了重复提示 / 补挥刀动画 / 同平台 / 更丰富背景</div>
+      <div class="title">双人联机坦克大战 v1</div>
+      <div class="sub">房间号联机 · 复古 4399 味儿 · 双人互殴</div>
     </div>
     <div id="status">连接中...</div>
   </header>
@@ -19,11 +19,6 @@
   <section class="lobby panel">
     <div class="row stack-mobile">
       <input id="nameInput" placeholder="你的名字" value="玩家" />
-      <select id="charSelect">
-        <option value="blade">火帽刀客</option>
-        <option value="ranger">冰弓仔</option>
-        <option value="cowboy">影子牛仔</option>
-      </select>
     </div>
     <div class="row room-row">
       <button id="createBtn">创建房间</button>
@@ -31,46 +26,32 @@
       <button id="joinBtn">加入房间</button>
     </div>
     <div class="room-box" id="roomBox">房间号：未进入</div>
-    <div class="tips">攻击键还是 4 个：挥刀 / 射击 / 格挡 / 处决。现在挥刀会有明显刀身和弧线动画，背景也更花一些。</div>
+    <div class="tips">操作：左边控制移动，右边发射。砖墙能打碎，铁墙打不烂。打爆对面坦克 3 条命，直接舒服了。</div>
   </section>
 
   <section class="hud panel">
-    <div class="bar-col">
-      <div class="name-line"><span id="leftName">玩家1</span><span id="leftHpText">100</span></div>
-      <div class="bar hp"><div id="leftHp"></div></div>
-      <div class="name-line small"><span>能量</span><span id="leftEnergyText">100</span></div>
-      <div class="bar energy"><div id="leftEnergy"></div></div>
-    </div>
-    <div class="mid-info" id="comboInfo">READY</div>
-    <div class="bar-col">
-      <div class="name-line"><span id="rightName">玩家2</span><span id="rightHpText">100</span></div>
-      <div class="bar hp"><div id="rightHp"></div></div>
-      <div class="name-line small"><span>能量</span><span id="rightEnergyText">100</span></div>
-      <div class="bar energy"><div id="rightEnergy"></div></div>
-    </div>
+    <div class="hp-card"><span id="p1Name">玩家1</span><strong id="p1Hp">3</strong></div>
+    <div class="mid-info" id="midInfo">READY</div>
+    <div class="hp-card"><span id="p2Name">玩家2</span><strong id="p2Hp">3</strong></div>
   </section>
 
-  <section class="arena panel arena-big">
+  <section class="arena panel">
     <canvas id="game" width="800" height="560"></canvas>
     <div id="overlayMsg" class="overlay-msg hidden"></div>
-    <div id="ultOverlay" class="ult-overlay hidden"><div id="ultText" class="ult-text">处决</div></div>
   </section>
 
   <footer class="controls">
     <div class="joystick-box">
       <div class="joy-title">移动</div>
       <div class="joy-grid">
-        <div></div><button data-k="up" class="joy">跳</button><div></div>
-        <button data-k="left" class="joy">左</button><button data-k="down" class="joy">蹲</button><button data-k="right" class="joy">右</button>
+        <div></div><button data-k="up" class="joy">↑</button><div></div>
+        <button data-k="left" class="joy">←</button><button data-k="down" class="joy">↓</button><button data-k="right" class="joy">→</button>
       </div>
     </div>
     <div class="skill-box">
       <div class="joy-title">攻击</div>
       <div class="skill-cluster">
-        <button data-k="slash" class="skill light">挥刀</button>
-        <button data-k="shoot" class="skill heavy">射击</button>
-        <button data-k="guard" class="skill tech">格挡</button>
-        <button data-k="ult" class="skill ult">处决</button>
+        <button data-k="shoot" class="skill fire">开火</button>
       </div>
       <button id="resetBtn" class="reset">重开</button>
     </div>

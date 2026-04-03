@@ -8,44 +8,31 @@ body{overflow-x:hidden}
 .panel{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:18px;backdrop-filter:blur(10px)}
 .lobby{padding:12px;margin-bottom:10px}
 .row{display:flex;gap:10px;align-items:center}.stack-mobile{margin-bottom:10px}
-.stack-mobile input,.stack-mobile select,.room-row input{flex:1}
-input,select{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px 14px;font-size:16px}
-option{color:#111827}
+.stack-mobile input,.room-row input{flex:1}
+input{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px 14px;font-size:16px}
 button{border:none;color:#fff;font-weight:900;font-size:15px;border-radius:16px;padding:12px 14px}
 #createBtn,#joinBtn,.reset{background:linear-gradient(135deg,#3b82f6,#7c3aed)}
 .room-box,.tips{margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06)}
 .hud{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:10px 12px;margin-bottom:10px}
-.name-line{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}.name-line.small{font-size:11px;opacity:.8}
-.bar{width:100%;height:14px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:6px}
-.bar>div{height:100%;width:100%;transition:width .15s ease}
-.bar.hp>div{background:linear-gradient(90deg,#ef4444,#f59e0b)}
-.bar.energy>div{background:linear-gradient(90deg,#22c55e,#06b6d4)}
+.hp-card{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.06);padding:10px 12px;border-radius:14px}
 .mid-info{font-weight:1000;font-size:22px;text-align:center;color:#fef08a;min-width:100px}
 .arena{position:relative;padding:10px}
-.arena-big #game{width:100%;height:auto;display:block;border-radius:14px;background:#0f172a;max-height:78vh}
-.overlay-msg,.ult-overlay{position:absolute;inset:10px;display:flex;align-items:center;justify-content:center;border-radius:14px}
+#game{width:100%;height:auto;display:block;border-radius:14px;background:#0f172a;max-height:78vh}
+.overlay-msg{position:absolute;inset:10px;display:flex;align-items:center;justify-content:center;border-radius:14px;font-size:clamp(24px,5vw,52px);font-weight:1000;text-shadow:0 0 12px rgba(255,255,255,.35)}
 .hidden{display:none}
-.overlay-msg{font-size:clamp(24px,5vw,52px);font-weight:1000;text-shadow:0 0 12px rgba(255,255,255,.35)}
-.ult-overlay{background:radial-gradient(circle,rgba(255,255,255,.12),rgba(0,0,0,.84));animation:ultflash 1.9s ease}
-.ult-text{font-size:clamp(34px,8vw,96px);font-weight:1000;color:#fff;text-shadow:0 0 16px rgba(255,255,255,.4),0 0 42px rgba(236,72,153,.4)}
-@keyframes ultflash{0%{opacity:0;transform:scale(1.08)}12%{opacity:1}82%{opacity:1}100%{opacity:0;transform:scale(1)}}
 .controls{margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:stretch}
 .joystick-box,.skill-box{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:12px}
 .joy-title{text-align:center;font-weight:900;font-size:14px;margin-bottom:8px;opacity:.9}
 .joy-grid{display:grid;grid-template-columns:64px 64px 64px;grid-template-rows:56px 56px;gap:8px;justify-content:center}
 .joy{background:linear-gradient(135deg,#334155,#475569);font-size:20px;min-height:56px}
-.skill-cluster{display:grid;grid-template-columns:92px 92px;gap:10px;justify-content:center;margin-bottom:10px}
-.skill{min-height:64px;font-size:15px;border-radius:22px}
-.light{background:linear-gradient(135deg,#f59e0b,#ea580c)}
-.heavy{background:linear-gradient(135deg,#ef4444,#b91c1c)}
-.tech{background:linear-gradient(135deg,#64748b,#334155)}
-.ult{background:linear-gradient(135deg,#ec4899,#7c3aed)}
+.skill-cluster{display:grid;grid-template-columns:140px;gap:10px;justify-content:center;margin-bottom:10px}
+.skill{min-height:78px;font-size:22px;border-radius:24px}
+.fire{background:linear-gradient(135deg,#ef4444,#b91c1c)}
 button:active,button.active{transform:scale(.96);filter:brightness(1.12)}
 @media (max-width:760px){
 .controls,.hud{grid-template-columns:1fr;display:block}
 .mid-info{margin:8px 0}
 .controls{display:grid;grid-template-columns:1fr 1fr}
 .stack-mobile,.room-row{flex-direction:column}
-.stack-mobile input,.stack-mobile select,.room-row input,#createBtn,#joinBtn{width:100%}
-.skill-cluster{grid-template-columns:1fr 1fr}
+.stack-mobile input,.room-row input,#createBtn,#joinBtn{width:100%}
 }
