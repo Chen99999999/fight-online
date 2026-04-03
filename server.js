@@ -7,7 +7,13 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-app.use(express.static(path.join(__dirname, 'public')));
+// 现在静态文件都在仓库根目录
+app.use(express.static(__dirname));
+
+// 首页返回根目录下的 index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 const rooms = new Map();
 
@@ -127,7 +133,6 @@ wss.on('connection', (ws) => {
       return;
     }
 
-    // locate player's room
     let room = null;
     let player = null;
     for (const r of rooms.values()) {
