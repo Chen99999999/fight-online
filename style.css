@@ -36,3 +36,5 @@ button{background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;font-weight
   .seats{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:unset}
   .self-panel{margin-top:24px}
 }
+
+.self-title{margin-bottom:14px;font-weight:900}.raise-dropdown{display:none;margin-top:10px}.raise-dropdown.open{display:block}.top-actions button{flex:1}

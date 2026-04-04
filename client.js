@@ -7,10 +7,11 @@ const seatsEl = document.getElementById('seats');
 const communityEl = document.getElementById('community');
 const selfHandEl = document.getElementById('selfHand');
 const messageBox = document.getElementById('messageBox');
+const raiseDropdown = document.getElementById('raiseDropdown');
+const raiseInput = document.getElementById('raiseInput');
 
 const nameInput = document.getElementById('nameInput');
 const roomInput = document.getElementById('roomInput');
-const raiseInput = document.getElementById('raiseInput');
 
 let ws = null;
 let playerId = null;
@@ -22,25 +23,13 @@ function cardHtml(card, back=false) {
 function seatStyle(idx) {
   const positions = [
     'left:50%;top:0;transform:translateX(-50%);',
-    'right:0;top:70px;',
-    'right:40px;bottom:40px;',
-    'left:50%;bottom:0;transform:translateX(-50%);',
-    'left:40px;bottom:40px;',
-    'left:0;top:70px;'
+    'right:10px;top:70px;',
+    'right:10px;bottom:40px;',
+    'left:50%;bottom:110px;transform:translateX(-50%);',
+    'left:10px;bottom:40px;',
+    'left:10px;top:70px;'
   ];
   return positions[idx] || '';
-}
-function renderRaisePanel() {
-  return `
-    <div class="raise-panel">
-      <div class="quick-bets">
-        <button class="quick-bet" data-amt="1">1分</button>
-        <button class="quick-bet" data-amt="5">5分</button>
-        <button class="quick-bet" data-amt="10">10分</button>
-        <button class="quick-bet" data-amt="50">50分</button>
-      </div>
-    </div>
-  `;
 }
 function render() {
   if (!state) return;
@@ -63,16 +52,6 @@ function render() {
       </div>
     </div>
   `).join('');
-
-  bindQuickBetButtons();
-}
-function bindQuickBetButtons() {
-  document.querySelectorAll('.quick-bet').forEach(btn => {
-    btn.onclick = () => {
-      const amt = Number(btn.dataset.amt || 0);
-      raiseInput.value = String(amt);
-    };
-  });
 }
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -99,8 +78,18 @@ document.getElementById('joinBtn').onclick = () => {
 document.getElementById('readyBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type:'toggle_ready' }));
 document.getElementById('startBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type:'start_hand' }));
 document.getElementById('foldBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type:'fold' }));
-document.getElementById('callBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type:'check_call' }));
-document.getElementById('raiseBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type:'bet_raise', amount:Number(raiseInput.value||40) }));
-
-document.querySelector('.actions').insertAdjacentHTML('beforeend', renderRaisePanel());
-bindQuickBetButtons();
+document.getElementById('checkBtn').onclick = () => {
+  if (ws?.readyState!==1 || !state) return;
+  const me = state.players.find(p => p.id === playerId);
+  if (!me) return;
+  if (me.bet === state.currentBet) ws.send(JSON.stringify({ type:'call' }));
+};
+document.getElementById('callBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type:'call' }));
+document.getElementById('raiseMenuBtn').onclick = () => raiseDropdown.classList.toggle('open');
+document.getElementById('raiseBtn').onclick = () => {
+  if (ws?.readyState !== 1) return;
+  ws.send(JSON.stringify({ type:'raise', amount:Number(raiseInput.value||1) }));
+};
+document.querySelectorAll('.quick-bet').forEach(btn => {
+  btn.onclick = () => { raiseInput.value = String(Number(btn.dataset.amt||1)); };
+});
