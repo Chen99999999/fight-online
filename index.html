@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>多人德州扑克 v3</title>
+  <title>多人德州扑克 v4</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div>
-      <div class="title">多人德州扑克 v3</div>
-      <div class="sub">修头像溢出 + 四按钮操作 + 自动进下一轮</div>
+      <div class="title">多人德州扑克 v4</div>
+      <div class="sub">修头像溢出 · 红黑花色 · 操作播报 · 牌型提示</div>
     </div>
     <div id="status">连接中...</div>
   </header>
@@ -33,6 +33,7 @@
       <div class="turn-box" id="turnText">等待开局</div>
     </div>
 
+    <div id="winnerBox" class="winner-box"></div>
     <div id="seats" class="seats"></div>
 
     <div class="community-wrap">
@@ -42,11 +43,13 @@
     <div class="self-panel">
       <div class="self-title">你的手牌</div>
       <div id="selfHand" class="self-hand"></div>
+      <div id="selfResult" class="self-result"></div>
     </div>
   </section>
 
   <section class="actions panel">
     <div id="messageBox" class="message-box">等待加入房间</div>
+    <div id="actionFeed" class="action-feed"></div>
     <div class="row top-actions">
       <button id="checkBtn">Check</button>
       <button id="raiseMenuBtn">加注</button>

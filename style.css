@@ -9,32 +9,40 @@ html,body{margin:0;padding:0;min-height:100%;background:linear-gradient(180deg,#
 input,button{border-radius:14px;border:none;padding:12px 14px;font-size:16px}
 input{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.12);flex:1}
 button{background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;font-weight:900}
-.room-box,.message-box,.raise-panel{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06)}
-.table{min-height:620px;position:relative;background:radial-gradient(circle at center,#166534 0%, #14532d 35%, #0f172a 100%)}
+.room-box,.message-box,.action-feed{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06)}
+.table{min-height:640px;position:relative;background:radial-gradient(circle at center,#166534 0%, #14532d 35%, #0f172a 100%)}
 .table-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.pot-box,.street-box,.turn-box{background:rgba(0,0,0,.18);padding:10px 12px;border-radius:14px}
-.seats{position:relative;min-height:300px;margin-top:18px}
-.seat{position:absolute;width:180px;padding:10px;border-radius:14px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08)}
-.seat .name{font-weight:900}
-.seat .meta{font-size:12px;opacity:.82;line-height:1.6}
-.chips-badge{display:inline-block;background:#f59e0b;color:#111827;padding:2px 8px;border-radius:999px;font-weight:900;margin-left:6px}
+.pot-box,.street-box,.turn-box,.winner-box{background:rgba(0,0,0,.18);padding:10px 12px;border-radius:14px}
+.winner-box{margin-top:10px;min-height:42px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fde68a}
+.seats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.seat{min-width:0;padding:10px;border-radius:14px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08)}
+.seat .name{font-weight:900;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.seat .meta{font-size:12px;opacity:.88;line-height:1.6}
 .seat.turn{outline:2px solid #f59e0b}
 .seat.folded{opacity:.45}
 .seat.ready{box-shadow:0 0 0 2px rgba(34,197,94,.35) inset}
+.chips-badge{display:inline-block;background:#f59e0b;color:#111827;padding:2px 8px;border-radius:999px;font-weight:900}
+.showdown-line{margin-top:6px}
+.small-cards{display:flex;gap:4px;flex-wrap:wrap}
 .community-wrap{display:flex;justify-content:center;margin-top:18px}
-.community,.self-hand{display:flex;gap:8px;flex-wrap:wrap}
+.community,.self-hand{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .self-panel{display:flex;flex-direction:column;align-items:center;margin-top:38px}
-.card{width:56px;height:78px;border-radius:10px;background:#fff;color:#111827;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:22px}
-.card.back{background:linear-gradient(135deg,#1e3a8a,#7c3aed);color:#fff}
+.self-title{margin-bottom:14px;font-weight:900}
+.self-result{margin-top:10px;font-weight:900;color:#fde68a}
+.card{width:56px;height:78px;border-radius:10px;background:#fff;color:#111827;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:22px;border:2px solid transparent}
+.card.red{color:#dc2626}
+.card.highlight{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.25)}
 .actions .row{margin-top:8px}
+.action-feed{margin-top:8px;white-space:pre-line;line-height:1.5}
 .quick-bets{display:flex;gap:8px;flex-wrap:wrap}
-.quick-bet{padding:10px 12px;font-size:14px}
-.raise-dropdown{display:none}
+.raise-dropdown{display:none;margin-top:10px}
 .raise-dropdown.open{display:block}
+.top-actions button{flex:1}
 @media (max-width:900px){
-  .seat{position:static;width:auto;margin-bottom:8px}
-  .seats{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:unset}
+  .seats{grid-template-columns:1fr 1fr}
   .self-panel{margin-top:24px}
 }
-
-.self-title{margin-bottom:14px;font-weight:900}.raise-dropdown{display:none;margin-top:10px}.raise-dropdown.open{display:block}.top-actions button{flex:1}
+@media (max-width:560px){
+  .seats{grid-template-columns:1fr}
+  .top-actions button{flex:1 1 40%}
+}
