@@ -30,6 +30,18 @@ function seatStyle(idx) {
   ];
   return positions[idx] || '';
 }
+function renderRaisePanel() {
+  return `
+    <div class="raise-panel">
+      <div class="quick-bets">
+        <button class="quick-bet" data-amt="1">1分</button>
+        <button class="quick-bet" data-amt="5">5分</button>
+        <button class="quick-bet" data-amt="10">10分</button>
+        <button class="quick-bet" data-amt="50">50分</button>
+      </div>
+    </div>
+  `;
+}
 function render() {
   if (!state) return;
   roomBox.textContent = `房间号：${state.roomId || '未进入'}`;
@@ -43,15 +55,24 @@ function render() {
 
   seatsEl.innerHTML = state.players.map((p, i) => `
     <div class="seat ${p.id===state.turnPlayerId?'turn':''} ${p.folded?'folded':''} ${p.ready?'ready':''}" style="${seatStyle(i)}">
-      <div class="name">${p.name}</div>
+      <div class="name">${p.name}<span class="chips-badge">${p.chips}</span></div>
       <div class="meta">
-        筹码：${p.chips}<br>
         本轮下注：${p.bet}<br>
         ${p.isDealer?'庄家 ':''}${p.isSB?'SB ':''}${p.isBB?'BB ':''}<br>
         ${p.folded?'已弃牌':(p.inHand?'在局中':'待命')}
       </div>
     </div>
   `).join('');
+
+  bindQuickBetButtons();
+}
+function bindQuickBetButtons() {
+  document.querySelectorAll('.quick-bet').forEach(btn => {
+    btn.onclick = () => {
+      const amt = Number(btn.dataset.amt || 0);
+      raiseInput.value = String(amt);
+    };
+  });
 }
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -80,3 +101,6 @@ document.getElementById('startBtn').onclick = () => ws?.readyState===1 && ws.sen
 document.getElementById('foldBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type:'fold' }));
 document.getElementById('callBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type:'check_call' }));
 document.getElementById('raiseBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type:'bet_raise', amount:Number(raiseInput.value||40) }));
+
+document.querySelector('.actions').insertAdjacentHTML('beforeend', renderRaisePanel());
+bindQuickBetButtons();
