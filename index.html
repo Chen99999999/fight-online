@@ -3,42 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>多人德州扑克 v5</title>
+  <title>多人德州扑克 v8</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div>
-      <div class="title">多人德州扑克 v5</div>
-      <div class="sub">底部状态栏 · 初始筹码 0 · 防重复加入</div>
+      <div class="title">多人德州扑克 v8</div>
+      <div class="sub">加注修了 + 10 显示 + 公聊</div>
     </div>
     <div id="status">连接中...</div>
   </header>
 
-  <section class="lobby panel">
+  <section id="lobbyPanel" class="lobby panel">
     <div class="row">
       <input id="nameInput" placeholder="你的名字" value="玩家" />
-      <button id="createBtn">创建房间</button>
+      <button id="createBtn">创建</button>
       <input id="roomInput" placeholder="房间号" maxlength="4" />
-      <button id="joinBtn">加入房间</button>
+      <button id="joinBtn">加入</button>
     </div>
     <div class="room-box" id="roomBox">房间号：未进入</div>
   </section>
 
   <section class="table panel">
     <div class="table-top">
-      <div class="pot-box">底池：<strong id="potText">0</strong></div>
+      <div class="pot-box">底池 <strong id="potText">0</strong></div>
       <div class="street-box" id="streetText">WAITING</div>
+      <div id="bottomTurn" class="bottom-turn">等待开局</div>
     </div>
-
     <div id="winnerBox" class="winner-box"></div>
+    <div id="actionFeed" class="action-feed"></div>
     <div id="seats" class="seats"></div>
-
-    <div class="community-wrap">
-      <div id="community" class="community"></div>
-    </div>
-
+    <div class="community-wrap"><div id="community" class="community"></div></div>
     <div class="self-panel">
       <div class="self-title">你的手牌</div>
       <div id="selfHand" class="self-hand"></div>
@@ -48,7 +45,6 @@
 
   <section class="actions panel">
     <div id="messageBox" class="message-box">等待加入房间</div>
-    <div id="actionFeed" class="action-feed"></div>
     <div class="row top-actions">
       <button id="checkBtn">Check</button>
       <button id="raiseMenuBtn">加注</button>
@@ -57,21 +53,27 @@
     </div>
     <div id="raiseDropdown" class="raise-dropdown">
       <div class="quick-bets">
-        <button class="quick-bet" data-amt="1">1分</button>
-        <button class="quick-bet" data-amt="5">5分</button>
-        <button class="quick-bet" data-amt="10">10分</button>
-        <button class="quick-bet" data-amt="50">50分</button>
+        <button class="quick-bet" data-amt="1">1</button>
+        <button class="quick-bet" data-amt="5">5</button>
+        <button class="quick-bet" data-amt="10">10</button>
+        <button class="quick-bet" data-amt="50">50</button>
       </div>
       <div class="row">
         <input id="raiseInput" type="number" value="10" min="1" step="1" />
-        <button id="raiseBtn">确认加注</button>
+        <button id="raiseBtn">确认</button>
       </div>
     </div>
-    <div class="row">
-      <button id="readyBtn">Ready / 取消</button>
-      <button id="startBtn">开始发牌</button>
+    <div class="row bottom-row">
+      <button id="readyBtn">Ready</button>
+      <button id="startBtn">发牌</button>
     </div>
-    <div id="bottomTurn" class="bottom-turn">等待开局</div>
+    <div class="chat-wrap">
+      <div id="chatFeed" class="chat-feed"></div>
+      <div class="row chat-row">
+        <input id="chatInput" placeholder="公聊..." maxlength="60" />
+        <button id="chatBtn">发送</button>
+      </div>
+    </div>
   </section>
 </div>
 <script src="/client.js"></script>

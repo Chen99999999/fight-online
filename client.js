@@ -12,6 +12,9 @@ const actionFeedEl = document.getElementById('actionFeed');
 const bottomTurnEl = document.getElementById('bottomTurn');
 const raiseDropdown = document.getElementById('raiseDropdown');
 const raiseInput = document.getElementById('raiseInput');
+const lobbyPanel = document.getElementById('lobbyPanel');
+const chatFeedEl = document.getElementById('chatFeed');
+const chatInput = document.getElementById('chatInput');
 
 const nameInput = document.getElementById('nameInput');
 const roomInput = document.getElementById('roomInput');
@@ -20,6 +23,12 @@ let ws = null;
 let playerId = null;
 let state = null;
 
+function displayCard(card) {
+  if (!card) return '';
+  const rank = card.slice(0, -1);
+  const suit = card.slice(-1);
+  return (rank === 'T' ? '10' : rank) + suit;
+}
 function cardClass(card, highlighted=false) {
   const suit = card.slice(-1);
   let cls = 'card';
@@ -28,19 +37,12 @@ function cardClass(card, highlighted=false) {
   return cls;
 }
 function cardHtml(card, highlighted=false) {
-  return `<div class="${cardClass(card, highlighted)}">${card}</div>`;
+  return `<div class="${cardClass(card, highlighted)}">${displayCard(card)}</div>`;
 }
 function renderPlayerShowdown(p) {
   if (!p.showdownName || !p.visibleCards || p.visibleCards.length === 0) return '';
   const hiSet = new Set((p.highlightCards || []).map(c => c));
-  return `
-    <div class="showdown-line">
-      <div>${p.showdownName}</div>
-      <div class="small-cards">
-        ${p.visibleCards.map(c => cardHtml(c, hiSet.has(c))).join('')}
-      </div>
-    </div>
-  `;
+  return `<div class="showdown-line"><div>${p.showdownName}</div><div class="small-cards">${p.visibleCards.map(c => cardHtml(c, hiSet.has(c))).join('')}</div></div>`;
 }
 function render() {
   if (!state) return;
@@ -50,23 +52,23 @@ function render() {
   bottomTurnEl.textContent = state.turnPlayerId === playerId ? '轮到你了' : (state.turnPlayerId ? '还没到你' : '等待下一局');
   messageBox.textContent = state.message || '等待操作';
   winnerBox.textContent = state.winnerText || '';
-  actionFeedEl.textContent = (state.actionFeed || []).join('\n');
+  actionFeedEl.textContent = (state.actionFeed || []).join(' ｜ ');
+  chatFeedEl.textContent = (state.chats || []).join('\n');
 
-  communityEl.innerHTML = state.community.map(c => cardHtml(c)).join('');
+  if (state.phase === 'playing' || state.roomId) lobbyPanel.classList.add('hidden-panel');
+  else lobbyPanel.classList.remove('hidden-panel');
+
+  communityEl.innerHTML = (state.community || []).map(c => cardHtml(c)).join('');
   const selfHi = new Set();
-  const me = state.players.find(p => p.id === playerId);
+  const me = (state.players || []).find(p => p.id === playerId);
   (me?.highlightCards || []).forEach(c => selfHi.add(c));
   selfHandEl.innerHTML = (state.selfHand || []).map(c => cardHtml(c, selfHi.has(c))).join('');
   selfResultEl.textContent = state.selfResult || '';
 
-  seatsEl.innerHTML = state.players.map((p) => `
+  seatsEl.innerHTML = (state.players || []).map((p) => `
     <div class="seat ${p.id===state.turnPlayerId?'turn':''} ${p.folded?'folded':''} ${p.ready?'ready':''}">
       <div class="name">${p.name}<span class="chips-badge">${p.chips}</span></div>
-      <div class="meta">
-        本轮下注：${p.bet}<br>
-        ${p.isDealer?'庄家 ':''}${p.folded?'已弃牌':(p.inHand?'在局中':'待命')}<br>
-        ${p.actionText || ''}
-      </div>
+      <div class="meta">本轮下注：${p.bet}<br>${p.isDealer?'庄家 ':''}${p.folded?'已弃牌':(p.inHand?'在局中':'待命')}<br>${p.actionText || ''}</div>
       ${renderPlayerShowdown(p)}
     </div>
   `).join('');
@@ -98,9 +100,8 @@ document.getElementById('startBtn').onclick = () => ws?.readyState===1 && ws.sen
 document.getElementById('foldBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type: 'fold' }));
 document.getElementById('checkBtn').onclick = () => {
   if (ws?.readyState!==1 || !state) return;
-  const me = state.players.find(p => p.id === playerId);
-  if (!me) return;
-  if (me.bet === state.currentBet) ws.send(JSON.stringify({ type: 'call' }));
+  const me = (state.players || []).find(p => p.id === playerId);
+  if (me && me.bet === state.currentBet) ws.send(JSON.stringify({ type: 'call' }));
 };
 document.getElementById('callBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type: 'call' }));
 document.getElementById('raiseMenuBtn').onclick = () => raiseDropdown.classList.toggle('open');
@@ -110,4 +111,13 @@ document.getElementById('raiseBtn').onclick = () => {
 };
 document.querySelectorAll('.quick-bet').forEach(btn => {
   btn.onclick = () => { raiseInput.value = String(Number(btn.dataset.amt || 1)); };
+});
+document.getElementById('chatBtn').onclick = () => {
+  const text = (chatInput.value || '').trim();
+  if (!text || ws?.readyState !== 1) return;
+  ws.send(JSON.stringify({ type: 'chat', text }));
+  chatInput.value = '';
+};
+chatInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('chatBtn').click();
 });
