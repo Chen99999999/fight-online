@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>多人德州扑克 v4</title>
+  <title>多人德州扑克 v5</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div>
-      <div class="title">多人德州扑克 v4</div>
-      <div class="sub">修头像溢出 · 红黑花色 · 操作播报 · 牌型提示</div>
+      <div class="title">多人德州扑克 v5</div>
+      <div class="sub">底部状态栏 · 初始筹码 0 · 防重复加入</div>
     </div>
     <div id="status">连接中...</div>
   </header>
@@ -30,7 +30,6 @@
     <div class="table-top">
       <div class="pot-box">底池：<strong id="potText">0</strong></div>
       <div class="street-box" id="streetText">WAITING</div>
-      <div class="turn-box" id="turnText">等待开局</div>
     </div>
 
     <div id="winnerBox" class="winner-box"></div>
@@ -72,6 +71,7 @@
       <button id="readyBtn">Ready / 取消</button>
       <button id="startBtn">开始发牌</button>
     </div>
+    <div id="bottomTurn" class="bottom-turn">等待开局</div>
   </section>
 </div>
 <script src="/client.js"></script>

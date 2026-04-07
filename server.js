@@ -13,7 +13,7 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 const rooms = new Map();
 const SUITS = ['♠','♥','♦','♣'];
 const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
-const STARTING_CHIPS = 500;
+const STARTING_CHIPS = 0;
 const MAX_PLAYERS = 6;
 
 function code() {
@@ -24,7 +24,12 @@ function code() {
 }
 function safeSend(ws, payload) { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); }
 function broadcast(room, build) { for (const p of room.players) safeSend(p.ws, build(p.id)); }
-
+function playerRoom(playerId) {
+  for (const r of rooms.values()) {
+    if (r.players.some(p => p.id === playerId)) return r;
+  }
+  return null;
+}
 function makeDeck() {
   const d = [];
   for (const s of SUITS) for (const r of RANKS) d.push(r + s);
@@ -107,8 +112,7 @@ function comb5(cards) {
   return out;
 }
 function bestFive(cards7) {
-  let bestEval = null;
-  let bestCards = null;
+  let bestEval = null, bestCards = null;
   for (const c of comb5(cards7)) {
     const e = eval5(c);
     if (!bestEval || cmpEval(e, bestEval) > 0) {
@@ -118,7 +122,6 @@ function bestFive(cards7) {
   }
   return { eval: bestEval, cards: bestCards };
 }
-
 function publicPlayer(p, reveal = false) {
   return {
     id: p.id,
@@ -138,7 +141,7 @@ function publicPlayer(p, reveal = false) {
   };
 }
 function roomStateFor(room, viewerId) {
-  const reveal = room.phase === 'showdown' || room.street === 'showdown' || room.phase === 'waiting' && room.community.length > 0;
+  const reveal = room.phase === 'waiting' && room.community.length > 0;
   const self = room.players.find(p => p.id === viewerId);
   return {
     roomId: room.roomId,
@@ -149,7 +152,7 @@ function roomStateFor(room, viewerId) {
     community: room.community,
     turnPlayerId: room.turnPlayerId,
     message: room.message || '',
-    actionFeed: room.actionFeed.slice(-6),
+    actionFeed: room.actionFeed.slice(-8),
     players: room.players.map(p => publicPlayer(p, reveal)),
     selfHand: self?.hand || [],
     selfResult: self?.selfResult || '',
@@ -158,14 +161,14 @@ function roomStateFor(room, viewerId) {
 }
 function pushAction(room, txt) {
   room.actionFeed.push(txt);
-  if (room.actionFeed.length > 12) room.actionFeed.shift();
+  if (room.actionFeed.length > 16) room.actionFeed.shift();
   room.message = txt;
 }
 function nextOccupied(room, start) {
   const n = room.players.length;
   for (let i = 1; i <= n; i++) {
     const idx = (start + i) % n;
-    if (room.players[idx].chips > 0) return idx;
+    if (room.players[idx]) return idx;
   }
   return 0;
 }
@@ -174,7 +177,7 @@ function nextActive(room, start) {
   for (let i = 1; i <= n; i++) {
     const idx = (start + i) % n;
     const p = room.players[idx];
-    if (p.inHand && !p.folded && p.chips > 0) return idx;
+    if (p.inHand && !p.folded) return idx;
   }
   return -1;
 }
@@ -186,11 +189,11 @@ function resetStreet(room) {
 }
 function collectToPot(room) { room.players.forEach(p => { room.pot += p.bet; p.bet = 0; }); }
 function resetShowdown(room) {
-  room.players.forEach(p => { p.showdownName = ''; p.highlightCards = []; p.selfResult = ''; p.visibleCards = []; });
+  room.players.forEach(p => { p.showdownName = ''; p.highlightCards = []; p.selfResult = ''; });
   room.winnerText = '';
 }
 function startHand(room) {
-  const ready = room.players.filter(p => p.ready && p.chips > 0);
+  const ready = room.players.filter(p => p.ready);
   if (ready.length < 2) { room.message = '至少 2 人 ready 才能开局'; return false; }
   room.phase = 'playing';
   room.street = 'preflop';
@@ -205,7 +208,7 @@ function startHand(room) {
   room.players.forEach(p => {
     p.hand = [];
     p.folded = false;
-    p.inHand = p.ready && p.chips > 0;
+    p.inHand = p.ready;
     p.bet = 0;
     p.acted = false;
     p.isDealer = false;
@@ -218,10 +221,10 @@ function startHand(room) {
   return true;
 }
 function allMatched(room) {
-  return remaining(room).every(p => p.bet === room.currentBet || p.chips === 0);
+  return remaining(room).every(p => p.bet === room.currentBet);
 }
 function allActed(room) {
-  return remaining(room).every(p => p.acted || p.chips === 0);
+  return remaining(room).every(p => p.acted);
 }
 function awardSingle(room, winner, msg) {
   collectToPot(room);
@@ -232,15 +235,14 @@ function awardSingle(room, winner, msg) {
   room.winnerText = msg;
   room.message = msg;
   room.players.forEach(p => {
-    if (p.id === winner.id) p.selfResult = `对手弃牌，你赢了`;
-    else p.selfResult = `你输了`;
+    if (p.id === winner.id) p.selfResult = '对手弃牌，你赢了';
+    else p.selfResult = '你输了';
   });
 }
 function showdown(room) {
   collectToPot(room);
   const contenders = remaining(room);
-  let best = null;
-  let winners = [];
+  let best = null, winners = [];
   for (const p of contenders) {
     const out = bestFive([...p.hand, ...room.community]);
     p.showdownName = out.eval.name;
@@ -250,12 +252,12 @@ function showdown(room) {
       winners = [p];
     } else if (cmpEval(out.eval, best.eval) === 0) winners.push(p);
   }
-  const share = Math.floor(room.pot / winners.length);
+  const share = winners.length ? Math.floor(room.pot / winners.length) : 0;
   winners.forEach(w => w.chips += share);
   room.phase = 'waiting';
   room.street = 'showdown';
   room.turnPlayerId = null;
-  const winName = winners[0].showdownName || '高牌';
+  const winName = winners[0]?.showdownName || '高牌';
   room.winnerText = winners.length === 1 ? `${winName}，${winners[0].name} 赢了` : `${winName}，平局`;
   room.message = room.winnerText;
   room.players.forEach(p => {
@@ -303,6 +305,7 @@ wss.on('connection', ws => {
     try { msg = JSON.parse(raw.toString()); } catch { return; }
 
     if (msg.type === 'create_room') {
+      if (playerRoom(playerId)) return safeSend(ws, { type: 'error_msg', text: '你已经在一个房间里了' });
       let roomId = code(); while (rooms.has(roomId)) roomId = code();
       const room = { roomId, players: [], dealerIndex: 0, deck: [], community: [], pot: 0, phase: 'waiting', street: 'preflop', currentBet: 0, turnPlayerId: null, message: '房间创建成功', actionFeed: [], winnerText: '' };
       room.players.push({ id: playerId, name: msg.name || '玩家1', ws, seat: 1, chips: STARTING_CHIPS, ready: false, hand: [], folded: false, inHand: false, bet: 0, acted: false, isDealer: false, actionText: '', showdownName: '', highlightCards: [], selfResult: '' });
@@ -311,6 +314,7 @@ wss.on('connection', ws => {
       return;
     }
     if (msg.type === 'join_room') {
+      if (playerRoom(playerId)) return safeSend(ws, { type: 'error_msg', text: '你已经加入过房间了' });
       const room = rooms.get((msg.roomId || '').toUpperCase());
       if (!room) return safeSend(ws, { type: 'error_msg', text: '房间不存在' });
       if (room.players.length >= MAX_PLAYERS) return safeSend(ws, { type: 'error_msg', text: '房间已满（最多6人）' });
@@ -319,8 +323,7 @@ wss.on('connection', ws => {
       return;
     }
 
-    let room = null;
-    for (const r of rooms.values()) if (r.players.some(p => p.id === playerId)) { room = r; break; }
+    const room = playerRoom(playerId);
     if (!room) return;
     const player = room.players.find(p => p.id === playerId);
     if (!player) return;
@@ -351,7 +354,7 @@ wss.on('connection', ws => {
     }
     if (msg.type === 'call') {
       const need = Math.max(0, room.currentBet - player.bet);
-      const pay = Math.min(need, player.chips);
+      const pay = Math.min(need, Math.max(0, player.chips));
       player.chips -= pay;
       player.bet += pay;
       player.acted = true;
@@ -367,7 +370,7 @@ wss.on('connection', ws => {
       amount = Math.max(1, amount);
       const target = room.currentBet + amount;
       const need = target - player.bet;
-      const pay = Math.min(need, player.chips);
+      const pay = Math.min(need, Math.max(0, player.chips));
       if (pay <= 0) return;
       player.chips -= pay;
       player.bet += pay;

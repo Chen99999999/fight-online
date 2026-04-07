@@ -2,7 +2,6 @@ const statusEl = document.getElementById('status');
 const roomBox = document.getElementById('roomBox');
 const potText = document.getElementById('potText');
 const streetText = document.getElementById('streetText');
-const turnText = document.getElementById('turnText');
 const seatsEl = document.getElementById('seats');
 const communityEl = document.getElementById('community');
 const selfHandEl = document.getElementById('selfHand');
@@ -10,6 +9,7 @@ const selfResultEl = document.getElementById('selfResult');
 const winnerBox = document.getElementById('winnerBox');
 const messageBox = document.getElementById('messageBox');
 const actionFeedEl = document.getElementById('actionFeed');
+const bottomTurnEl = document.getElementById('bottomTurn');
 const raiseDropdown = document.getElementById('raiseDropdown');
 const raiseInput = document.getElementById('raiseInput');
 
@@ -47,7 +47,7 @@ function render() {
   roomBox.textContent = `房间号：${state.roomId || '未进入'}`;
   potText.textContent = state.pot;
   streetText.textContent = state.street.toUpperCase();
-  turnText.textContent = state.turnPlayerId === playerId ? '轮到你了' : (state.turnPlayerId ? '别急，还没到你' : '等待下一局');
+  bottomTurnEl.textContent = state.turnPlayerId === playerId ? '轮到你了' : (state.turnPlayerId ? '还没到你' : '等待下一局');
   messageBox.textContent = state.message || '等待操作';
   winnerBox.textContent = state.winnerText || '';
   actionFeedEl.textContent = (state.actionFeed || []).join('\n');

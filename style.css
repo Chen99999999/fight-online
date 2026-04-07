@@ -9,10 +9,10 @@ html,body{margin:0;padding:0;min-height:100%;background:linear-gradient(180deg,#
 input,button{border-radius:14px;border:none;padding:12px 14px;font-size:16px}
 input{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.12);flex:1}
 button{background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;font-weight:900}
-.room-box,.message-box,.action-feed{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06)}
+.room-box,.message-box,.action-feed,.bottom-turn{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06)}
 .table{min-height:640px;position:relative;background:radial-gradient(circle at center,#166534 0%, #14532d 35%, #0f172a 100%)}
 .table-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.pot-box,.street-box,.turn-box,.winner-box{background:rgba(0,0,0,.18);padding:10px 12px;border-radius:14px}
+.pot-box,.street-box,.winner-box{background:rgba(0,0,0,.18);padding:10px 12px;border-radius:14px}
 .winner-box{margin-top:10px;min-height:42px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fde68a}
 .seats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
 .seat{min-width:0;padding:10px;border-radius:14px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08)}
@@ -38,6 +38,7 @@ button{background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;font-weight
 .raise-dropdown{display:none;margin-top:10px}
 .raise-dropdown.open{display:block}
 .top-actions button{flex:1}
+.bottom-turn{margin-top:10px;text-align:center;font-weight:900;color:#fde68a}
 @media (max-width:900px){
   .seats{grid-template-columns:1fr 1fr}
   .self-panel{margin-top:24px}
