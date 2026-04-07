@@ -55,7 +55,7 @@ function render() {
   actionFeedEl.textContent = (state.actionFeed || []).join(' ｜ ');
   chatFeedEl.textContent = (state.chats || []).join('\n');
 
-  if (state.phase === 'playing' || state.roomId) lobbyPanel.classList.add('hidden-panel');
+  if (state.phase === 'playing') lobbyPanel.classList.add('hidden-panel');
   else lobbyPanel.classList.remove('hidden-panel');
 
   communityEl.innerHTML = (state.community || []).map(c => cardHtml(c)).join('');
