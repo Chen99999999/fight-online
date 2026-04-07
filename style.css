@@ -121,3 +121,78 @@ input{
     font-size:15px;
   }
 }
+
+
+/* v11 adjustments */
+.app{max-width:860px}
+.main-grid{grid-template-columns:1.65fr .95fr}
+.seats{
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  gap:4px;
+  align-content:start;
+}
+.seat{padding:4px;min-height:68px}
+.seat .name{font-size:10px}
+.seat .meta{font-size:8px;line-height:1.1}
+.card{
+  width:32px !important;
+  height:44px !important;
+  font-size:13px !important;
+  border-radius:7px;
+}
+.community,.self-hand{gap:4px}
+.self-title{font-size:12px}
+.self-result{font-size:12px}
+.top-actions button,
+.bottom-row button{
+  min-height:52px !important;
+  font-size:16px !important;
+  border-radius:12px;
+}
+.quick-bet{
+  min-height:40px;
+  min-width:46px;
+  font-size:14px;
+}
+#raiseBtn,#chatBtn{
+  min-height:44px;
+  font-size:14px;
+}
+.chat-feed{
+  min-height:42px;
+  height:42px;
+}
+.action-feed{
+  height:24px;
+}
+.actions.turn-glow .top-actions button,
+.actions.turn-glow .bottom-row button{
+  animation: turnPulse 1s infinite;
+  box-shadow: 0 0 0 2px rgba(250,204,21,.85), 0 0 16px rgba(250,204,21,.45);
+}
+@keyframes turnPulse{
+  0%{box-shadow:0 0 0 2px rgba(250,204,21,.95),0 0 10px rgba(250,204,21,.35)}
+  50%{box-shadow:0 0 0 4px rgba(250,204,21,.95),0 0 18px rgba(250,204,21,.6)}
+  100%{box-shadow:0 0 0 2px rgba(250,204,21,.95),0 0 10px rgba(250,204,21,.35)}
+}
+@media (max-width:520px){
+  .main-grid{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  .seats{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:3px;
+  }
+  .seat{padding:3px;min-height:62px}
+  .seat .name{font-size:9px}
+  .seat .meta{font-size:7px;line-height:1.05}
+  .chips-badge{font-size:8px}
+  .card{
+    width:30px !important;
+    height:42px !important;
+    font-size:12px !important;
+  }
+  .top-actions button,
+  .bottom-row button{
+    min-height:54px !important;
+    font-size:16px !important;
+  }
+}

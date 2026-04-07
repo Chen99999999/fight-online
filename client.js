@@ -15,6 +15,7 @@ const raiseInput = document.getElementById('raiseInput');
 const lobbyPanel = document.getElementById('lobbyPanel');
 const chatFeedEl = document.getElementById('chatFeed');
 const chatInput = document.getElementById('chatInput');
+const actionsPanel = document.getElementById('actionsPanel');
 
 const nameInput = document.getElementById('nameInput');
 const roomInput = document.getElementById('roomInput');
@@ -49,7 +50,9 @@ function render() {
   roomBox.textContent = `房间号：${state.roomId || '未进入'}`;
   potText.textContent = state.pot;
   streetText.textContent = state.street.toUpperCase();
-  bottomTurnEl.textContent = state.turnPlayerId === playerId ? '轮到你了' : (state.turnPlayerId ? '还没到你' : '等待下一局');
+  const isMyTurn = state.turnPlayerId === playerId;
+  bottomTurnEl.textContent = isMyTurn ? '轮到你了' : (state.turnPlayerId ? '还没到你' : '等待下一局');
+  actionsPanel.classList.toggle('turn-glow', !!isMyTurn);
   messageBox.textContent = state.message || '等待操作';
   winnerBox.textContent = state.winnerText || '';
   actionFeedEl.textContent = (state.actionFeed || []).join(' ｜ ');
@@ -88,12 +91,16 @@ function connect() {
 connect();
 
 document.getElementById('createBtn').onclick = () => {
+  const nm = (nameInput.value || '').trim();
+  if (!nm || nm === '玩家') { messageBox.textContent = '先改名字再创建房间'; return; }
   if (ws?.readyState !== 1) return;
-  ws.send(JSON.stringify({ type: 'create_room', name: nameInput.value || '玩家1' }));
+  ws.send(JSON.stringify({ type: 'create_room', name: nm }));
 };
 document.getElementById('joinBtn').onclick = () => {
+  const nm = (nameInput.value || '').trim();
+  if (!nm || nm === '玩家') { messageBox.textContent = '先改名字再加入房间'; return; }
   if (ws?.readyState !== 1) return;
-  ws.send(JSON.stringify({ type: 'join_room', roomId: roomInput.value.toUpperCase(), name: nameInput.value || '玩家' }));
+  ws.send(JSON.stringify({ type: 'join_room', roomId: roomInput.value.toUpperCase(), name: nm }));
 };
 document.getElementById('readyBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type: 'toggle_ready' }));
 document.getElementById('startBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type: 'start_hand' }));
@@ -104,7 +111,7 @@ document.getElementById('checkBtn').onclick = () => {
   if (me && me.bet === state.currentBet) ws.send(JSON.stringify({ type: 'call' }));
 };
 document.getElementById('callBtn').onclick = () => ws?.readyState===1 && ws.send(JSON.stringify({ type: 'call' }));
-document.getElementById('raiseMenuBtn').onclick = () => raiseDropdown.classList.toggle('open');
+document.getElementById('raiseMenuBtn').onclick = () => { raiseDropdown.classList.toggle('open'); if (state?.minRaise) raiseInput.value = String(Math.max(Number(raiseInput.value||1), state.minRaise)); };
 document.getElementById('raiseBtn').onclick = () => {
   if (ws?.readyState !== 1) return;
   ws.send(JSON.stringify({ type: 'raise', amount: Number(raiseInput.value || 1) }));

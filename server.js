@@ -116,7 +116,8 @@ function roomStateFor(room, viewerId) {
     players: room.players.map(p => publicPlayer(p, reveal)),
     selfHand: self?.hand || [],
     selfResult: self?.selfResult || '',
-    winnerText: room.winnerText || ''
+    winnerText: room.winnerText || '',
+    minRaise: room.minRaise || 1
   };
 }
 function pushAction(room, txt) {
@@ -140,13 +141,13 @@ function nextActive(room, start) {
 }
 function remaining(room) { return room.players.filter(p => p.inHand && !p.folded); }
 function setTurn(room, idx) { room.turnPlayerId = idx >= 0 ? room.players[idx].id : null; }
-function resetStreet(room) { room.players.forEach(p => { p.bet = 0; p.acted = false; p.actionText = ''; }); room.currentBet = 0; }
+function resetStreet(room) { room.players.forEach(p => { p.bet = 0; p.acted = false; p.actionText = ''; }); room.currentBet = 0; room.minRaise = 1; }
 function collectToPot(room) { room.players.forEach(p => { room.pot += p.bet; p.bet = 0; }); }
 function resetShowdown(room) { room.players.forEach(p => { p.showdownName=''; p.highlightCards=[]; p.selfResult=''; }); room.winnerText=''; }
 function startHand(room) {
   const ready = room.players.filter(p => p.ready);
   if (ready.length < 2) { room.message='至少 2 人 ready 才能开局'; return false; }
-  room.phase='playing'; room.street='preflop'; room.pot=0; room.community=[]; room.deck=makeDeck(); room.currentBet=0; room.turnPlayerId=null; room.actionFeed=[];
+  room.phase='playing'; room.street='preflop'; room.pot=0; room.community=[]; room.deck=makeDeck(); room.currentBet=0; room.turnPlayerId=null; room.actionFeed=[]; room.minRaise=1;
   resetShowdown(room);
   room.dealerIndex = nextOccupied(room, room.dealerIndex);
   room.players.forEach(p => { p.hand=[]; p.folded=false; p.inHand=p.ready; p.bet=0; p.acted=false; p.isDealer=false; p.actionText=''; });
@@ -271,12 +272,21 @@ wss.on('connection', ws => {
     if (msg.type === 'raise') {
       let amount = Number(msg.amount || 1);
       if (!Number.isFinite(amount)) amount = 1;
-      amount = Math.max(1, amount);
+      amount = Math.floor(amount);
+      if (amount < (room.minRaise || 1)) {
+        return safeSend(ws, { type:'error_msg', text:`本轮最小加注是 ${room.minRaise || 1}` });
+      }
       const target = room.currentBet + amount;
       const need = target - player.bet;
-      player.chips -= need; player.bet += need; room.currentBet = Math.max(room.currentBet, player.bet);
+      player.chips -= need;
+      player.bet += need;
+      room.currentBet = Math.max(room.currentBet, player.bet);
+      room.minRaise = Math.max(room.minRaise || 1, amount);
       room.players.forEach(p => { if (p.inHand && !p.folded && p.id !== player.id) p.acted = false; });
-      player.acted = true; player.actionText = `加到 ${player.bet}`; pushAction(room, `${player.name} 加注到 ${player.bet}`); maybeAdvance(room);
+      player.acted = true;
+      player.actionText = `加到 ${player.bet}`;
+      pushAction(room, `${player.name} 加注到 ${player.bet}`);
+      maybeAdvance(room);
       broadcast(room, id => ({ type:'room_state', ...roomStateFor(room, id) })); return;
     }
   });
