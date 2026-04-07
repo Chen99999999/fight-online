@@ -60,3 +60,64 @@ button{background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;font-weight
   .seats{grid-template-columns:1fr 1fr}
   .top-actions button,.bottom-row button{min-width:50px}
 }
+
+
+/* v10 layout overrides */
+.app{max-width:820px}
+.main-grid{grid-template-columns:1.7fr .9fr}
+.seats{
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  gap:4px;
+}
+.seat{
+  padding:4px;
+}
+.seat .name{font-size:10px}
+.seat .meta{font-size:8px;line-height:1.1}
+.chips-badge{padding:0 4px;font-size:9px}
+.showdown-line{margin-top:1px}
+.community-wrap{margin-top:2px}
+.self-panel{margin-top:2px}
+.self-title{font-size:10px;margin-bottom:2px}
+.self-result{font-size:10px;margin-top:1px}
+
+.actions{
+  justify-content:flex-start;
+}
+.top-actions button,
+.bottom-row button{
+  min-height:46px;
+  font-size:15px;
+  border-radius:10px;
+}
+#raiseBtn,#chatBtn{
+  min-height:42px;
+  font-size:14px;
+}
+.quick-bet{
+  min-height:36px;
+  font-size:13px;
+}
+input{
+  min-height:40px;
+  font-size:14px;
+}
+
+@media (max-width:520px){
+  .app{max-width:100%;padding:4px}
+  .main-grid{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  .seats{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:3px;
+  }
+  .seat{padding:3px}
+  .seat .name{font-size:9px}
+  .seat .meta{font-size:7px;line-height:1.05}
+  .chips-badge{font-size:8px}
+  .card{width:22px;height:30px;font-size:10px}
+  .top-actions button,
+  .bottom-row button{
+    min-height:48px;
+    font-size:15px;
+  }
+}
